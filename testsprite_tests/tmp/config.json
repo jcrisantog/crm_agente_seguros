@@ -1,0 +1,16 @@
+{
+  "status": "commited",
+  "type": "frontend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:3000",
+  "executionArgs": {
+    "projectName": "CRM",
+    "projectPath": "d:\\IA\\DiegoMN\\CRM",
+    "testIds": [],
+    "additionalInstruction": "Skip login. All routes are public. Just run High priority tests.",
+    "serverMode": "production",
+    "envs": {
+      "API_KEY": "sk-user-C16s6bA8JkD1zDNvMi2AVi8FiSgU5lfqXDVR0f4cHH5JVumGklJ0y8fGLYpV7RP6ByisQh4qshmX5BicluprrKxFDFiWZDyqOBQyp6S601o3UDGVKfNLbp63gr8v9gaxyzg"
+    }
+  }
+}

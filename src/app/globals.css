@@ -1,0 +1,116 @@
+@import "tailwindcss";
+
+@theme {
+  /* Fuentes */
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  /* Colors defined dynamically via CSS Variables */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-border: var(--border);
+  --color-ring: var(--primary);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-sidebar-bg: var(--sidebar-bg);
+  --color-sidebar-fg: var(--sidebar-fg);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-fg: var(--sidebar-accent-fg);
+
+  --color-popover: var(--card);
+  --color-popover-foreground: var(--card-foreground);
+
+  /* Geometría */
+  --radius-xl: 1rem;
+  --radius-lg: 0.75rem;
+  --radius-md: 0.5rem;
+  --radius-sm: 0.25rem;
+}
+
+@layer base {
+  :root {
+    /* Nexus Light Mode */
+    --background: #f8fafc;
+    --foreground: #0f172a;
+    
+    --primary: #22c55e;
+    --primary-foreground: #ffffff;
+    
+    --muted: #f1f5f9;
+    --muted-foreground: #64748b;
+    
+    --border: #e2e8f0;
+    
+    --card: #ffffff;
+    --card-foreground: #0f172a;
+
+    --sidebar-bg: #111827; 
+    --sidebar-fg: #f3f4f6; 
+    --sidebar-border: #1f2937; 
+    --sidebar-accent: rgba(99, 102, 241, 0.15); 
+    --sidebar-accent-fg: #ffffff;
+    
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    /* Nexus Dark Mode */
+    --background: #0f101f;
+    --foreground: #f8fafc;
+    
+    --primary: #22c55e;
+    --primary-foreground: #ffffff;
+    
+    --muted: #1e1b4b;
+    --muted-foreground: #94a3b8;
+    
+    --border: #334155;
+    
+    --card: #15162c;
+    --card-foreground: #f8fafc;
+
+    --sidebar-bg: #111827; 
+    --sidebar-fg: #f3f4f6;
+    --sidebar-border: #1f2937;
+    --sidebar-accent: rgba(99, 102, 241, 0.25);
+    --sidebar-accent-fg: #ffffff;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground tracking-tight selection:bg-primary/20;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-bold tracking-tighter;
+  }
+
+  /* Efecto Glass aliado a la referencia Nexus pero usando la variable card */
+  .glass-effect {
+    @apply bg-card border border-border shadow-sm transition-all duration-300;
+  }
+
+  /* Transiciones suaves */
+  input,
+  button,
+  select,
+  textarea {
+    @apply transition-all duration-200;
+  }
+}

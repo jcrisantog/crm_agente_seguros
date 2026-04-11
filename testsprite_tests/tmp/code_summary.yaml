@@ -1,0 +1,70 @@
+version: "2"
+type: frontend
+tech_stack:
+  - language: TypeScript
+  - framework: Next.js (App Router)
+  - ui_library: Tailwind CSS, Lucide React, Framer Motion, Sonner (Toasts)
+  - state_management: React Hooks (useState, useEffect, use)
+  - backend_sdk: Insforge SDK
+routes:
+  - path: /
+    file: "src/app/page.tsx"
+    auth_required: false
+    description: Dashboard showing KPIs and alerts.
+  - path: /clients
+    file: "src/app/clients/page.tsx"
+    auth_required: false
+    description: List of all insurance clients.
+  - path: /clients/new
+    file: "src/app/clients/new/page.tsx"
+    auth_required: false
+    description: Form to register a new client.
+  - path: /clients/[id]
+    file: "src/app/clients/[id]/page.tsx"
+    auth_required: false
+    description: 360 view of a client.
+  - path: /clients/[id]/edit
+    file: "src/app/clients/[id]/edit/page.tsx"
+    auth_required: false
+    description: Edit client contact information.
+  - path: /clients/[id]/products/new
+    file: "src/app/clients/[id]/products/new/page.tsx"
+    auth_required: false
+    description: Assign a new policy.
+  - path: /clients/[id]/documents
+    file: "src/app/clients/[id]/documents/page.tsx"
+    auth_required: false
+    description: Document management.
+  - path: /products
+    file: "src/app/products/page.tsx"
+    auth_required: false
+    description: Catalog of products.
+  - path: /products/new
+    file: "src/app/products/new/page.tsx"
+    auth_required: false
+    description: Create new product.
+  - path: /products/[id]/edit
+    file: "src/app/products/[id]/edit/page.tsx"
+    auth_required: false
+    description: Edit product.
+  - path: /settings
+    file: "src/app/settings/page.tsx"
+    auth_required: false
+    description: System settings.
+features:
+  - name: Dashboard
+    description: KPI visualization and alerts.
+    files: ["src/app/page.tsx"]
+    entry_route: /
+    user_interactions: [View KPIs]
+  - name: Client CRUD
+    description: Manage clients.
+    files: ["src/app/clients/page.tsx", "src/app/clients/new/page.tsx"]
+    entry_route: /clients
+    user_interactions: [Create client, Search client]
+  - name: Policy/Document Management
+    description: Manage policies and files.
+    files: ["src/app/clients/[id]/products/new/page.tsx", "src/app/clients/[id]/documents/page.tsx"]
+    entry_route: /clients/[id]
+    user_interactions: [Assign policy, Upload document]
+known_limitations: []

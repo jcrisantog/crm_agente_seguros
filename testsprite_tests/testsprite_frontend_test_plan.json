@@ -1,0 +1,1172 @@
+[
+  {
+    "id": "TC001",
+    "title": "Dashboard loads and displays KPI tiles",
+    "description": "Verifies the dashboard landing page loads and key KPI content is visible.",
+    "category": "Dashboard",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify page title contains \"Plan Maestro\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"KPIs\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"KPI\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Attention Required\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC002",
+    "title": "Dashboard shows Attention Required alerts list",
+    "description": "Verifies the urgent alerts section is present and shows alert items to act on.",
+    "category": "Dashboard",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Attention Required\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"alerts list\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"alert item\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"vencimientos\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"documentos faltantes\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC003",
+    "title": "Open a dashboard alert item to reach client context",
+    "description": "Verifies a user can click an alert from the dashboard and land on a client-related detail context.",
+    "category": "Dashboard",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Attention Required\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first visible alert item in the \"Attention Required\" list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/clients\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Client\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Client 360\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC004",
+    "title": "Dashboard quick navigation: go from dashboard to Clients list",
+    "description": "Verifies the dashboard provides a visible way to navigate to the clients area via a quick action or main navigation.",
+    "category": "Dashboard",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Clients\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Clients\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/clients\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Clients\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"clients list\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC005",
+    "title": "Dashboard quick navigation: go from dashboard to Products catalog",
+    "description": "Verifies the dashboard allows navigation to the products catalog through a quick action or main navigation.",
+    "category": "Dashboard",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Products\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Products\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/products\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Products\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"products catalog\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC006",
+    "title": "Dashboard quick navigation: go from dashboard to Settings",
+    "description": "Verifies the dashboard allows navigation to system settings via visible navigation controls.",
+    "category": "Dashboard",
+    "priority": "Low",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Settings\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Settings\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/settings\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Settings\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"System settings\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC007",
+    "title": "Create a new client from Clients list and open the client 360 view",
+    "description": "Verifies an agent can create a client, find it via search, and open the client profile page.",
+    "category": "Client CRUD",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /clients"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Clients\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"New Client\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/clients/new\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"Juan Perez\" into the full name field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"juan.perez@example.com\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"5551234567\" into the phone field"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Create client\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"success\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC008",
+    "title": "Create client shows validation error for invalid email, then succeeds after correction",
+    "description": "Verifies email format validation blocks submission and succeeds after fixing the email.",
+    "category": "Client CRUD",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /clients/new"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"New Client\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Type \"not-an-email\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Create client\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Invalid email\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Type \"valid.email@example.com\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Create client\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"success\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC009",
+    "title": "Prevent client creation when required full name is missing",
+    "description": "Verifies the create client form blocks submission when full name is not provided.",
+    "category": "Client CRUD",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /clients/new"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"New Client\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Type \"missingname@example.com\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"5551112222\" into the phone field"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Create client\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Full name\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"required\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC010",
+    "title": "Prevent client creation when required email is missing",
+    "description": "Verifies the create client form blocks submission when email is not provided.",
+    "category": "Client CRUD",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /clients/new"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"New Client\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Type \"No Email Client\" into the full name field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"5553334444\" into the phone field"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Create client\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Email\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"required\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC011",
+    "title": "Search with no matching results shows an empty state or no results indicator",
+    "description": "Verifies the client list handles a search query with no matches in a user-visible way.",
+    "category": "Client CRUD",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /clients"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Clients\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Type \"ZZZ-NO-SUCH-CLIENT-123\" into the search field"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"No results\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"ZZZ-NO-SUCH-CLIENT-123\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC012",
+    "title": "Create a new product from the Products catalog and verify it appears in the list",
+    "description": "Verifies an admin can create a product with name, description, and required docs schema and then see it listed in the catalog.",
+    "category": "Product Management (Catalog)",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /products"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/products\""
+      },
+      {
+        "type": "action",
+        "description": "Click on \"New Product\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/products/new\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"Auto E2E Product\" into the \"Name\" field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Created by automated UI test\" into the \"Description\" field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"id_card\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"id_card\\\"]}\" into the \"Required Docs Schema\" field"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Create\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/products\""
+      }
+    ]
+  },
+  {
+    "id": "TC013",
+    "title": "New product creation: verify the created product is visible in the products list",
+    "description": "Verifies that after creating a product, the product name is visible in the /products list view.",
+    "category": "Product Management (Catalog)",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /products"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"New Product\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"Catalog Visibility Product\" into the \"Name\" field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Product should appear in list\" into the \"Description\" field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"proof_of_address\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"proof_of_address\\\"]}\" into the \"Required Docs Schema\" field"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Create\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Catalog Visibility Product\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC014",
+    "title": "Create product validation: Name required error when name is empty",
+    "description": "Verifies the Create Product form blocks submission and shows a 'Name required' validation message when name is missing.",
+    "category": "Product Management (Catalog)",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /products/new"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/products/new\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"Some description\" into the \"Description\" field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{\\\"type\\\":\\\"object\\\"}\" into the \"Required Docs Schema\" field"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Create\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Name required\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC015",
+    "title": "Recover from Name required validation by filling name and creating successfully",
+    "description": "Verifies the user can fix the missing name error and successfully create the product afterward.",
+    "category": "Product Management (Catalog)",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /products/new"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Create\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Name required\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Recovered Name Product\" into the \"Name\" field"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Create\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/products\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Recovered Name Product\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC016",
+    "title": "Create product with minimal content: name only and verify it returns to catalog",
+    "description": "Verifies a product can be created with only a name (leaving optional fields empty) and the user is taken back to the products list.",
+    "category": "Product Management (Catalog)",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /products/new"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Name Only Product\" into the \"Name\" field"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Create\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/products\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Name Only Product\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC017",
+    "title": "Create product with required docs schema containing multiple required fields",
+    "description": "Verifies creating a product works when the required docs schema includes multiple required document keys.",
+    "category": "Product Management (Catalog)",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /products/new"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Multi Doc Schema Product\" into the \"Name\" field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Schema with multiple required docs\" into the \"Description\" field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"id_card\\\":{\\\"type\\\":\\\"string\\\"},\\\"application_form\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"id_card\\\",\\\"application_form\\\"]}\" into the \"Required Docs Schema\" field"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Create\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Multi Doc Schema Product\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC018",
+    "title": "Assign a policy to an existing client from the Clients list",
+    "description": "Verifies an agent can open a client, assign a product policy, and sees confirmation that the client product was created.",
+    "category": "Policy Assignment & Document Management",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /clients"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify page title contains \"Clients\""
+      },
+      {
+        "type": "action",
+        "description": "Click on the first client in the clients list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Assign Policy\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Assign Policy\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/products/new\""
+      },
+      {
+        "type": "action",
+        "description": "Select the first available product from the product dropdown"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Assign policy\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC019",
+    "title": "Complete policy assignment and confirm required documents are generated as missing",
+    "description": "Verifies assigning a policy creates missing required documents visible in the client documents list.",
+    "category": "Policy Assignment & Document Management",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /clients"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first client in the clients list"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Assign Policy\""
+      },
+      {
+        "type": "action",
+        "description": "Select the first available product from the product dropdown"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Assign policy\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Policy assigned\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Documents\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"missing\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC020",
+    "title": "Open client documents and see missing document items before upload",
+    "description": "Verifies the documents page shows required document entries with status missing after a policy is assigned.",
+    "category": "Policy Assignment & Document Management",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /clients"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first client in the clients list"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Documents\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify page title contains \"Documents\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Upload\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"missing\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC021",
+    "title": "Verify an uploaded document and see status update to verified",
+    "description": "Verifies a user can verify an uploaded document and the UI reflects verified status.",
+    "category": "Policy Assignment & Document Management",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /clients"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first client in the clients list"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Documents\""
+      },
+      {
+        "type": "action",
+        "description": "Scroll to the first document with status \"uploaded\""
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Verify\" for that uploaded document"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"verified\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC022",
+    "title": "Prevent verifying a document that is still missing",
+    "description": "Verifies the UI does not allow verifying a document that has not been uploaded (missing status).",
+    "category": "Policy Assignment & Document Management",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /clients"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first client in the clients list"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Documents\""
+      },
+      {
+        "type": "action",
+        "description": "Scroll to the first document with status \"missing\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Verify\" is not visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"missing\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC023",
+    "title": "Send a renewal from Renewals Queue and see success toast",
+    "description": "Verifies an agent can open a policy from the Renewals Queue, review the prefilled renewal message, send it, and receive a success toast.",
+    "category": "Notifications & Renewals",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"KPIs\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Renewals Queue\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click a policy item in the \"Renewals Queue\" list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Renewal message\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Send\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Send\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Renewal sent\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC024",
+    "title": "Verify payment semaforo statuses are visible on dashboard",
+    "description": "Verifies the dashboard shows payment/vigency semaforo status indicators for policies (Green/Orange/Red).",
+    "category": "Notifications & Renewals",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Renewals Queue\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Green\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Orange\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Red\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC025",
+    "title": "Open a policy from Renewals Queue and verify prefilled renewal message is present",
+    "description": "Verifies selecting a policy from the Renewals Queue opens a renewal view with a prefilled message ready to send.",
+    "category": "Notifications & Renewals",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Renewals Queue\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click a policy item in the \"Renewals Queue\" list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Renewal message\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Send\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC026",
+    "title": "Ensure toasts are visible and non-blocking after successful send",
+    "description": "Verifies the success toast appears after sending and the renewal view remains usable (Send not replaced by a blocking state).",
+    "category": "Notifications & Renewals",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click a policy item in the \"Renewals Queue\" list"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Send\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Renewal sent\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Send\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC027",
+    "title": "Send action requires being on a renewal detail view (no send from dashboard without selection)",
+    "description": "Verifies the dashboard does not allow sending a renewal without first selecting a policy/suggested renewal to open the message view.",
+    "category": "Notifications & Renewals",
+    "priority": "Low",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Renewals Queue\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Send\" is not visible"
+      }
+    ]
+  },
+  {
+    "id": "TC028",
+    "title": "Suggested renewal opens message view and send succeeds",
+    "description": "Verifies an agent can click a suggested renewal from the dashboard, view the prefilled message, and send it successfully.",
+    "category": "Notifications & Renewals",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Suggested renewal\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click a \"Suggested renewal\" item"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Renewal message\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Send\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Renewal sent\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC029",
+    "title": "Update organization name and save successfully",
+    "description": "Verifies an agent can update the organization name in Settings and sees a success confirmation.",
+    "category": "Settings & System Configuration",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /settings"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify page title contains \"Settings\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Organization\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Acme Insurance Group\" into the \"Organization name\" field"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Save\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Settings saved\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC030",
+    "title": "Save organization settings with empty organization name shows validation error",
+    "description": "Verifies the Settings form prevents saving when the organization name is cleared and shows an error message.",
+    "category": "Settings & System Configuration",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /settings"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Organization name\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"\" into the \"Organization name\" field"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Save\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Organization name\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"required\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC031",
+    "title": "Save organization settings with a very long name is handled gracefully",
+    "description": "Verifies the Settings form handles an unusually long organization name without breaking the page and provides clear feedback.",
+    "category": "Settings & System Configuration",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /settings"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Organization name\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\" into the \"Organization name\" field"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Save\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Settings saved\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC032",
+    "title": "Attempt to change a user role without permission shows insufficient permissions error",
+    "description": "Verifies a user without the necessary permission cannot change another user’s role and is shown an explicit error.",
+    "category": "Settings & System Configuration",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /settings"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Users\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Users\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Role\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on the \"Role\" control for a user in the list"
+      },
+      {
+        "type": "action",
+        "description": "Select \"Admin\" from dropdown"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Insufficient permissions\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC033",
+    "title": "Insufficient permissions guidance is visible after failed role change",
+    "description": "Verifies the UI provides a clear next step (contact org admin) after an insufficient permissions error.",
+    "category": "Settings & System Configuration",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /settings"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Users\""
+      },
+      {
+        "type": "action",
+        "description": "Click on the \"Role\" control for a user in the list"
+      },
+      {
+        "type": "action",
+        "description": "Select \"Admin\" from dropdown"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Insufficient permissions\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Contact org admin\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC034",
+    "title": "Cancel/close role change UI does not apply changes after permission error",
+    "description": "Verifies that after a permission error, exiting the role change UI does not incorrectly display an updated role.",
+    "category": "Settings & System Configuration",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /settings"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Users\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Role\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on the \"Role\" control for a user in the list"
+      },
+      {
+        "type": "action",
+        "description": "Select \"Admin\" from dropdown"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Insufficient permissions\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Press Escape"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Admin\" is not visible"
+      }
+    ]
+  }
+]
