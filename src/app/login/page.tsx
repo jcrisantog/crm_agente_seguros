@@ -29,7 +29,8 @@ export default function LoginPage() {
             }
 
             // Verificamos si tenemos los datos necesarios para considerar el login exitoso
-            const sessionData = data?.session || data;
+            // Nota: El SDK devuelve la sesión directamente en 'data'
+            const sessionData = data as any;
             const hasAuth = sessionData && (sessionData.accessToken || sessionData.token);
 
             // Sincronización con el servidor Next.js
