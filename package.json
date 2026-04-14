@@ -8,6 +8,9 @@
     "start": "next start",
     "lint": "eslint"
   },
+  "engines": {
+    "node": ">=20.9.0"
+  },
   "dependencies": {
     "@insforge/nextjs": "^1.1.7",
     "@insforge/sdk": "^1.1.5",
