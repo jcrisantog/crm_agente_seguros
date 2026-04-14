@@ -27,7 +27,7 @@ export default function LoginPage() {
             return;
         }
 
-        if (data.user) {
+        if (data && data.user) {
             toast.success("¡Bienvenido al sistema!");
             // La redirección refresca la app para que el Middleware detecte la cookie o token local
             router.push("/");
