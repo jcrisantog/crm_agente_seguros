@@ -23,6 +23,12 @@ export const insforge = createClient({
     anonKey: insforgeAnonKey
 });
 
+// Forzar modo storage para asegurar persistencia en el navegador
+if (typeof window !== "undefined") {
+    // @ts-ignore - acceso al manager
+    insforge.tokenManager?.setStorageMode();
+}
+
 export const ensureValidSession = async () => {
     try {
         const { data } = await insforge.auth.getCurrentSession();

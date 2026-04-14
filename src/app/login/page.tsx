@@ -16,22 +16,60 @@ export default function LoginPage() {
         e.preventDefault();
         setIsLoading(true);
 
-        const { data, error } = await insforge.auth.signInWithPassword({
-            email,
-            password,
-        });
+        try {
+            const { data, error } = await insforge.auth.signInWithPassword({
+                email,
+                password
+            });
 
-        if (error) {
-            toast.error(error.message || "Credenciales incorrectas");
+            if (error) {
+                toast.error(error.message || "Credenciales incorrectas");
+                setIsLoading(false);
+                return;
+            }
+
+            // Verificamos si tenemos los datos necesarios para considerar el login exitoso
+            const sessionData = data?.session || data;
+            const hasAuth = sessionData && (sessionData.accessToken || sessionData.token);
+
+            // Sincronización con el servidor Next.js
+            if (hasAuth) {
+                const syncRes = await fetch("/api/auth", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${sessionData.accessToken || sessionData.token}`,
+                    },
+                    body: JSON.stringify({ 
+                        action: "sync-token",
+                        user: sessionData.user 
+                    }),
+                });
+
+                if (!syncRes.ok) {
+                    toast.error("Error al sincronizar la sesión con el servidor.");
+                    setIsLoading(false);
+                    return;
+                }
+
+                toast.success("¡Bienvenido al sistema!");
+                
+                // Puente de sesión para comunicación rápida entre páginas
+                localStorage.setItem('insforge_session_bridge', sessionData.accessToken || sessionData.token);
+                if (sessionData.user) {
+                    localStorage.setItem('insforge_user_bridge', JSON.stringify(sessionData.user));
+                }
+
+                
+                setTimeout(() => {
+                    window.location.assign("/");
+                }, 100);
+            }
+        } catch (err: any) {
+            console.error("Login Error Detallado:", err);
+            toast.error("Error de conexión. Revisa la consola del navegador.");
+        } finally {
             setIsLoading(false);
-            return;
-        }
-
-        if (data && data.user) {
-            toast.success("¡Bienvenido al sistema!");
-            // La redirección refresca la app para que el Middleware detecte la cookie o token local
-            router.push("/");
-            router.refresh();
         }
     };
 

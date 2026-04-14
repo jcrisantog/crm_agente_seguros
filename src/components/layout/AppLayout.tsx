@@ -1,14 +1,54 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sidebar } from "./Sidebar";
 import { Menu, X } from "lucide-react";
 import { Toaster } from "sonner";
-import { SignedIn, SignedOut, SignInButton } from "@insforge/nextjs";
+import { useAuth, SignedIn, SignedOut, SignInButton } from "@insforge/nextjs";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { insforge } from "@/lib/insforge";
 
 export function AppLayout({ children, fontClasses }: { children: React.ReactNode, fontClasses?: string }) {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const { isSignedIn, isLoaded, user } = useAuth();
+
+    useEffect(() => {
+        // Lógica de Hidratación Manual: Puente de sincronización vía LocalStorage
+        const hydrateSession = async () => {
+            if (isLoaded && !isSignedIn) {
+                // Intentar recuperar del puente de LocalStorage (creado en LoginPage)
+                const bridgeToken = localStorage.getItem('insforge_session_bridge');
+                const bridgeUser = localStorage.getItem('insforge_user_bridge');
+
+                if (bridgeToken) {
+                    try {
+                        let userObj = {};
+                        if (bridgeUser) {
+                            userObj = JSON.parse(bridgeUser);
+                        }
+
+                        // @ts-ignore - Acceso al TokenManager
+                        insforge.tokenManager.saveSession({
+                            accessToken: bridgeToken,
+                            user: userObj
+                        });
+
+                        // Forzar refresco del estado local del SDK
+                        await insforge.auth.getCurrentUser();
+                        
+                        // Limpiar el puente después de usarlo para seguridad
+                        localStorage.removeItem('insforge_session_bridge');
+                        localStorage.removeItem('insforge_user_bridge');
+                    } catch (err) {
+                        console.error("Fallo durante la hidratación de sesión:", err);
+                    }
+                }
+            }
+        };
+
+        hydrateSession();
+    }, [isLoaded, isSignedIn]);
+
 
     return (
         <div className={`${fontClasses} antialiased bg-background text-foreground flex h-screen overflow-hidden font-sans`}>
@@ -40,27 +80,7 @@ export function AppLayout({ children, fontClasses }: { children: React.ReactNode
 
                 {/* Content Area */}
                 <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-muted/20">
-                    <SignedIn>
-                        {children}
-                    </SignedIn>
-                    <SignedOut>
-                        <div className="h-full w-full flex flex-col items-center justify-center gap-6 text-center animate-in fade-in duration-700">
-                             <div className="w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center text-primary shadow-inner">
-                                <Menu size={40} className="animate-pulse" />
-                            </div>
-                            <div className="max-w-xs">
-                                <h2 className="text-2xl font-bold tracking-tight">Acceso Restringido</h2>
-                                <p className="text-muted-foreground mt-2 text-sm">
-                                    Tu sesión ha finalizado o no has iniciado sesión aún. Por favor, utiliza el botón de abajo para entrar.
-                                </p>
-                            </div>
-                            <SignInButton>
-                                <button className="px-8 py-3 bg-primary text-primary-foreground rounded-xl font-bold shadow-lg shadow-primary/20 hover:scale-105 transition-transform active:scale-95">
-                                    Iniciar Sesión
-                                </button>
-                            </SignInButton>
-                        </div>
-                    </SignedOut>
+                    {children}
                 </div>
 
                 {/* Floating Theme Toggle */}
