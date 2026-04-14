@@ -4,13 +4,14 @@ import { useState, useEffect } from "react";
 import { Sidebar } from "./Sidebar";
 import { Menu, X } from "lucide-react";
 import { Toaster } from "sonner";
-import { useAuth, SignedIn, SignedOut, SignInButton } from "@insforge/nextjs";
+import { useAuth, useUser, SignedIn, SignedOut, SignInButton } from "@insforge/nextjs";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { insforge } from "@/lib/insforge";
 
 export function AppLayout({ children, fontClasses }: { children: React.ReactNode, fontClasses?: string }) {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-    const { isSignedIn, isLoaded, user } = useAuth();
+    const { isSignedIn, isLoaded } = useAuth();
+    const { user } = useUser();
 
     useEffect(() => {
         // Lógica de Hidratación Manual: Puente de sincronización vía LocalStorage
