@@ -1,6 +1,8 @@
 import { insforge } from "@/lib/insforge";
 import { ClientsList } from "@/components/clients/ClientsList";
 
+export const dynamic = 'force-dynamic';
+
 // Define the fetch function
 /**
  * Obtiene la lista completa de asegurados con su respectivo conteo de pólizas.

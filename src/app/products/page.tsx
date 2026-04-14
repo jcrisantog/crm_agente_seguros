@@ -1,6 +1,8 @@
 import { insforge } from "@/lib/insforge";
 import { ProductsList } from "@/components/products/ProductsList";
 
+export const dynamic = 'force-dynamic';
+
 async function getProducts() {
     const { data, error } = await insforge.database
         .from("products")
