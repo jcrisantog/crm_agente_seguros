@@ -4,10 +4,15 @@ const insforgeUrl = process.env.NEXT_PUBLIC_INSFORGE_URL!;
 
 export default InsforgeMiddleware({
     baseUrl: insforgeUrl,
+    useBuiltInAuth: false,
+    signInUrl: "/login",
     publicRoutes: [
         "/api/auth",
         "/api/auth/logout",
-        "/logged-out"
+        "/logged-out",
+        "/login",
+        "/register",
+        "/forgot-password"
     ],
 });
 
