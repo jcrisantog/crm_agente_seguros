@@ -1,6 +1,12 @@
 import { createClient } from "npm:@insforge/sdk";
 import { Resend } from "npm:resend";
 
+const formatMxnAmount = (amount) => {
+    const value = Number(amount ?? 0);
+    const safeValue = Number.isFinite(value) ? value : 0;
+    return `$${safeValue.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
+
 export default async function (req) {
     const corsHeaders = {
         "Access-Control-Allow-Origin": "*",
@@ -199,6 +205,8 @@ export default async function (req) {
                 else formattedMsi = msiOptions.slice(0, -1).join(", ") + " y " + msiOptions[msiOptions.length - 1];
             }
 
+            const primaMnxFormatted = formatMxnAmount(policy.prima_mnx);
+
             if (msiApplies) {
                 html = (settings.msi_email_template || settings.email_template)
                     .replaceAll("{{nombre}}", policy.client.full_name)
@@ -206,7 +214,8 @@ export default async function (req) {
                     .replaceAll("{{msi_opciones}}", formattedMsi)
                     .replaceAll("{{fecha_pago}}", formatL(policy.payment_limit))
                     .replaceAll("{{dias_restantes}}", diffDays.toString())
-                    .replaceAll("{{monto}}", `$${Number(policy.net_premium || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`)
+                    .replaceAll("{{monto}}", primaMnxFormatted)
+                    .replaceAll("{{prima_mnx}}", primaMnxFormatted)
                     .replaceAll("{{fecha_pago_menos_10}}", promoDateToShowStr)
                     .replaceAll("{{tarjeta_principal}}", tF)
                     .replaceAll("{{banco}}", bF)
@@ -224,7 +233,8 @@ export default async function (req) {
                     .replaceAll("{{nombre}}", policy.client.full_name)
                     .replaceAll("{{fecha_pago}}", formatL(policy.payment_limit))
                     .replaceAll("{{dias_restantes}}", diffDays.toString())
-                    .replaceAll("{{monto}}", `$${Number(policy.net_premium || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`)
+                    .replaceAll("{{monto}}", primaMnxFormatted)
+                    .replaceAll("{{prima_mnx}}", primaMnxFormatted)
                     .replaceAll("{{banco}}", bF)
                     .replaceAll("{{terminacion}}", tF);
                 
@@ -232,7 +242,7 @@ export default async function (req) {
                     .replaceAll("{{nombre}}", policy.client.full_name);
             }
 
-            const { data: emailData, error: emailError } = await resend.emails.send({
+            const { error: emailError } = await resend.emails.send({
                 from: 'Diego MN Seguros <onboarding@resend.dev>',
                 to: policy.client.email,
                 subject: subject,
@@ -252,14 +262,15 @@ export default async function (req) {
                         nombre: policy.client.full_name,
                         telefono: policy.client?.phone || "",
                         fecha_corte: formatL(policy.payment_limit),
-                        monto: `$${Number(policy.net_premium || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}`,
+                        monto: primaMnxFormatted,
                         cuantosmsi: cuantosmsiWebhook,
                         fecha_max_pago: fechaMaxPagoWebhook,
                         banco: bF,
                         terminacion: tF,
                         policy_number: policy.policy_number,
                         source: 'automated_batch_server'
-                    })
+                    }),
+                    signal: AbortSignal.timeout(10000)
                 });
                 
                 if (!webhookResponse.ok) {

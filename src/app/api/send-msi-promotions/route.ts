@@ -13,7 +13,19 @@ const client = createClient({
 });
 const resend = new Resend(resendApiKey);
 
-export async function POST(req: Request) {
+type PaymentCard = {
+    is_main?: boolean;
+    no_tarjeta?: string;
+    banco?: string;
+};
+
+function formatMxnAmount(amount: unknown) {
+    const value = Number(amount ?? 0);
+    const safeValue = Number.isFinite(value) ? value : 0;
+    return `$${safeValue.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+export async function POST() {
     try {
         // 1. Obtener la configuracion de MSI
         const { data: settings, error: settingsError } = await client.database
@@ -80,7 +92,7 @@ export async function POST(req: Request) {
 
             try {
                 const formattedMsi = msiOptions.join(", ");
-                const premiumTotal = policy.total_premium ? `$${Number(policy.total_premium).toLocaleString()}` : "$0.00";
+                const primaMnxFormatted = formatMxnAmount(policy.prima_mnx);
 
                 const paymentLimitStr = policy.payment_limit ? String(policy.payment_limit).split('T')[0] : "";
                 const paymentLimitDate = new Date(paymentLimitStr);
@@ -88,24 +100,26 @@ export async function POST(req: Request) {
                 paymentLimitMinus10.setDate(paymentLimitMinus10.getDate() - 10);
                 const paymentLimitMinus10Str = isNaN(paymentLimitMinus10.getTime()) ? "" : paymentLimitMinus10.toISOString().split('T')[0];
 
-                const mainCardObj = Array.isArray(policy.tarjetas)
-                    ? (policy.tarjetas.find((t: any) => t.is_main) || policy.tarjetas[0])
+                const tarjetas = Array.isArray(policy.tarjetas) ? policy.tarjetas as PaymentCard[] : [];
+                const mainCardObj = tarjetas.length > 0
+                    ? (tarjetas.find((t) => t.is_main) || tarjetas[0])
                     : null;
 
                 const mainCardNo = mainCardObj?.no_tarjeta || "N/A";
                 const mainCardBanco = mainCardObj?.banco || "N/A";
 
-                let html = settings.msi_email_template
+                const html = settings.msi_email_template
                     .replaceAll("{{nombre}}", clientName)
                     .replaceAll("{{poliza}}", policy.policy_number || "Pendience")
                     .replaceAll("{{msi_opciones}}", formattedMsi)
                     .replaceAll("{{fecha_pago}}", paymentLimitStr)
-                    .replaceAll("{{monto}}", premiumTotal)
+                    .replaceAll("{{monto}}", primaMnxFormatted)
+                    .replaceAll("{{prima_mnx}}", primaMnxFormatted)
                     .replaceAll("{{fecha_pago_menos_10}}", paymentLimitMinus10Str)
                     .replaceAll("{{tarjeta_principal}}", mainCardNo)
                     .replaceAll("{{banco}}", mainCardBanco);
 
-                let subject = settings.msi_email_subject
+                const subject = settings.msi_email_subject
                     .replaceAll("{{nombre}}", clientName)
                     .replaceAll("{{poliza}}", policy.policy_number || "");
 
@@ -134,8 +148,9 @@ export async function POST(req: Request) {
                     status: 'success'
                 });
 
-            } catch (err: any) {
-                errors.push({ p: policy.policy_number, r: `Error: ${err.message}` });
+            } catch (err: unknown) {
+                const message = err instanceof Error ? err.message : String(err);
+                errors.push({ p: policy.policy_number, r: `Error: ${message}` });
             }
         }
 
@@ -155,8 +170,9 @@ export async function POST(req: Request) {
             }
         });
 
-    } catch (e: any) {
-        return NextResponse.json({ error: "Error interno del servidor", details: e.message }, { status: 500 });
+    } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : String(e);
+        return NextResponse.json({ error: "Error interno del servidor", details: message }, { status: 500 });
     }
 }
 

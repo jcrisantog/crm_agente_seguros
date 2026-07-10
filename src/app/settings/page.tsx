@@ -163,7 +163,7 @@ function RichTextEditor({ value, onChange }: { value: string, onChange: (val: st
             {/* Quick Variables */}
             <div className="p-3 bg-muted/20 border-t border-border flex flex-wrap gap-2 items-center">
                 <span className="text-[10px] font-bold uppercase text-muted-foreground/70 mr-2">Insertar Variable:</span>
-                {["{{nombre}}", "{{fecha_pago}}", "{{dias_restantes}}", "{{monto}}", "{{msi_opciones}}", "{{fecha_pago_menos_10}}", "{{tarjeta_principal}}", "{{banco}}"].map(v => (
+                {["{{nombre}}", "{{fecha_pago}}", "{{dias_restantes}}", "{{monto}}", "{{prima_mnx}}", "{{msi_opciones}}", "{{fecha_pago_menos_10}}", "{{tarjeta_principal}}", "{{banco}}"].map(v => (
                     <button
                         key={v}
                         type="button"
@@ -236,10 +236,15 @@ export default function SettingsPage() {
     const handleRunJob = async () => {
         setIsRunningJob(true);
         try {
-            const { data, error } = await insforge.functions.invoke('automated-reminders-batch', {
-                body: { force: true }
+            const res = await fetch("/api/run-automated-reminders", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ force: true }),
             });
-            if (error) throw error;
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || data.details || "No se pudo ejecutar el proceso.");
 
             toast.success("Proceso automatizado ejecutado", {
                 description: `Se procesaron ${data?.results?.length || 0} pólizas. Los webhooks y correos se gestionan desde el servidor.`
@@ -783,7 +788,7 @@ export default function SettingsPage() {
 
                                         <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-1">
                                             <Code size={12} />
-                                            Sugerencia: puedes usar variables como {`{{nombre}}, {{msi_opciones}}, {{fecha_pago}}, {{monto}}, {{poliza}}`}
+                                            Sugerencia: puedes usar variables como {`{{nombre}}, {{msi_opciones}}, {{fecha_pago}}, {{monto}}, {{prima_mnx}}, {{poliza}}`}
                                         </p>
                                     </div>
                                 </div>

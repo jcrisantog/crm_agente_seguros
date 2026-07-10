@@ -1,6 +1,12 @@
 import { createClient } from "npm:@insforge/sdk";
 import { Resend } from "npm:resend";
 
+const formatMxnAmount = (amount) => {
+    const value = Number(amount ?? 0);
+    const safeValue = Number.isFinite(value) ? value : 0;
+    return `$${safeValue.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
+
 export default async function (req) {
     const corsHeaders = {
         "Access-Control-Allow-Origin": "*",
@@ -29,7 +35,7 @@ export default async function (req) {
 
         const { data: policyData } = await client.database
             .from("client_products")
-            .select("policy_number, total_premium, net_premium, payment_limit, tarjetas")
+            .select("policy_number, prima_mnx, payment_limit, tarjetas")
             .eq("id", policy_id)
             .single();
 
@@ -109,6 +115,7 @@ export default async function (req) {
 
         let html = "";
         let subject = "";
+        const primaMnxFormatted = formatMxnAmount(policyData.prima_mnx);
 
         if (msiApplies) {
             html = (settings.msi_email_template || settings.email_template)
@@ -117,7 +124,8 @@ export default async function (req) {
                 .replaceAll("{{msi_opciones}}", formattedMsi)
                 .replaceAll("{{fecha_pago}}", formatL(policyData.payment_limit))
                 .replaceAll("{{dias_restantes}}", diffDays.toString())
-                .replaceAll("{{monto}}", `$${Number(policyData.net_premium || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`)
+                .replaceAll("{{monto}}", primaMnxFormatted)
+                .replaceAll("{{prima_mnx}}", primaMnxFormatted)
                 .replaceAll("{{fecha_pago_menos_10}}", promoDateToShowStr)
                 .replaceAll("{{tarjeta_principal}}", tF)
                 .replaceAll("{{banco}}", bF)
@@ -131,7 +139,8 @@ export default async function (req) {
                 .replaceAll("{{nombre}}", userData.full_name)
                 .replaceAll("{{fecha_pago}}", formatL(policyData.payment_limit))
                 .replaceAll("{{dias_restantes}}", diffDays.toString())
-                .replaceAll("{{monto}}", `$${Number(policyData.net_premium || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`)
+                .replaceAll("{{monto}}", primaMnxFormatted)
+                .replaceAll("{{prima_mnx}}", primaMnxFormatted)
                 .replaceAll("{{banco}}", bF)
                 .replaceAll("{{terminacion}}", tF);
 

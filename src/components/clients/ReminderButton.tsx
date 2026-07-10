@@ -12,6 +12,22 @@ interface ReminderButtonProps {
     clientId: string;
 }
 
+type PaymentCard = {
+    is_main?: boolean;
+    no_tarjeta?: string;
+    banco?: string;
+};
+
+function formatMxnAmount(amount: unknown) {
+    const value = Number(amount ?? 0);
+    const safeValue = Number.isFinite(value) ? value : 0;
+    return `$${safeValue.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function resolvePrimaMnxAmount(policy: Record<string, unknown>) {
+    return policy.prima_mnx ?? policy.prima_por_periodo ?? policy.net_premium ?? 0;
+}
+
 export function ReminderButton({ policyNumber, clientName, policyId, clientId }: ReminderButtonProps) {
     const [isLoading, setIsLoading] = useState(false);
 
@@ -41,8 +57,8 @@ export function ReminderButton({ policyNumber, clientName, policyId, clientId }:
 
                 if (policyData && settings) {
                     // Lógica para extraer tarjeta principal del array 'tarjetas'
-                    const tarjetasArray = Array.isArray(policyData.tarjetas) ? policyData.tarjetas : [];
-                    const mainCard = tarjetasArray.find((t: any) => t.is_main) || tarjetasArray[0] || {};
+                    const tarjetasArray = Array.isArray(policyData.tarjetas) ? policyData.tarjetas as PaymentCard[] : [];
+                    const mainCard = tarjetasArray.find((t) => t.is_main) || tarjetasArray[0] || {};
                     
                     const bancoFinal = mainCard.banco || "Pendiente";
                     const terminacionFinal = mainCard.no_tarjeta || "S/N";
@@ -99,13 +115,15 @@ export function ReminderButton({ policyNumber, clientName, policyId, clientId }:
                         if (msiOptions.length === 1) formattedMsi = msiOptions[0];
                         else formattedMsi = msiOptions.slice(0, -1).join(", ") + " y " + msiOptions[msiOptions.length - 1];
                     }
+                    const primaMnxFormatted = formatMxnAmount(resolvePrimaMnxAmount(policyData));
 
                     const payload = {
                         promocion: msiApplies ? "si" : "no",
                         nombre: policyData.clients?.full_name || clientName,
                         telefono: policyData.clients?.phone || "",
                         fecha_corte: formatLocalDate(policyData.payment_limit),
-                        monto: `$${Number(policyData.net_premium || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}`,
+                        monto: primaMnxFormatted,
+                        prima_mnx: primaMnxFormatted,
                         cuantosmsi: msiApplies ? formattedMsi : "N/A",
                         fecha_max_pago: msiApplies ? promoDateToShowStr : formatLocalDate(policyData.payment_limit),
                         banco: bancoFinal,
@@ -114,16 +132,26 @@ export function ReminderButton({ policyNumber, clientName, policyId, clientId }:
                         source: 'manual_button'
                     };
 
-                    await fetch('/api/webhook-proxy', {
+                    const webhookResponse = await fetch('/api/webhook-proxy', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                         },
                         body: JSON.stringify(payload)
                     });
+
+                    const webhookResult = await webhookResponse.json().catch(() => null);
+                    if (!webhookResponse.ok || webhookResult?.success === false) {
+                        throw new Error(webhookResult?.error || webhookResult?.data || "No se pudo enviar WhatsApp");
+                    }
                 }
             } catch (webhookErr) {
+                const webhookMessage = webhookErr instanceof Error ? webhookErr.message : "No se pudo enviar WhatsApp.";
                 console.warn("Webhook falló, pero el correo se intentó enviar:", webhookErr);
+                toast.warning("Correo enviado, WhatsApp no se pudo enviar", {
+                    description: webhookMessage,
+                    duration: 6000,
+                });
             }
 
             if (error) throw error;
@@ -133,10 +161,11 @@ export function ReminderButton({ policyNumber, clientName, policyId, clientId }:
                 description: `Se ha enviado el correo para la póliza ${policyNumber}.`,
                 duration: 5000,
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : "Ocurrió un error inesperado.";
             console.error("Error sending reminder:", error);
             toast.error("Error al enviar recordatorio", {
-                description: error.message || "Ocurrió un error inesperado.",
+                description: message,
             });
         } finally {
             setIsLoading(false);
