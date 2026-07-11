@@ -130,12 +130,12 @@ export default async function (req) {
             // Doble validación: solo procesar si coincide exactamente con un threshold
             const isTarget = thresholds.includes(diffDays);
             log.push(`Póliza ${policy.policy_number}: diffDays=${diffDays}, isTarget=${isTarget}, thresholds=[${thresholds.join(",")}]`);
-            
+
             if (!isTarget && !force) {
-                results.push({ 
-                    policy_id: policy.id, 
-                    success: false, 
-                    error: `Omitida: ${diffDays} días no coincide con thresholds (${thresholds.join(",")})` 
+                results.push({
+                    policy_id: policy.id,
+                    success: false,
+                    error: `Omitida: ${diffDays} días no coincide con thresholds (${thresholds.join(",")})`
                 });
                 continue;
             }
@@ -160,12 +160,12 @@ export default async function (req) {
             const msiActive = settings.msi_active === true;
             let msiApplies = false;
             let promoDateToShowStr = paymentLimitMinus10StrFormat;
-            
+
             if (msiActive && settings.msi_start_date && settings.msi_end_date) {
                 const promoStartDate = new Date(settings.msi_start_date + "T00:00:00");
                 const promoEndDate = new Date(settings.msi_end_date + "T23:59:59");
                 const now = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Mexico_City" }));
-                
+
                 // Set hours to 0 to compare dates easily
                 const nowNoTime = new Date(now);
                 nowNoTime.setHours(0, 0, 0, 0);
@@ -224,7 +224,7 @@ export default async function (req) {
                 subject = (settings.msi_email_subject || settings.email_subject)
                     .replaceAll("{{nombre}}", policy.client.full_name)
                     .replaceAll("{{poliza}}", policy.policy_number || "");
-                
+
                 promocionWebhook = "si";
                 cuantosmsiWebhook = formattedMsi;
                 fechaMaxPagoWebhook = promoDateToShowStr;
@@ -237,7 +237,7 @@ export default async function (req) {
                     .replaceAll("{{prima_mnx}}", primaMnxFormatted)
                     .replaceAll("{{banco}}", bF)
                     .replaceAll("{{terminacion}}", tF);
-                
+
                 subject = settings.email_subject
                     .replaceAll("{{nombre}}", policy.client.full_name);
             }
@@ -272,7 +272,7 @@ export default async function (req) {
                     }),
                     signal: AbortSignal.timeout(10000)
                 });
-                
+
                 if (!webhookResponse.ok) {
                     const errText = await webhookResponse.text();
                     console.error(`Webhook N8N respondió con error ${webhookResponse.status}: ${errText}`);

@@ -7,6 +7,15 @@ const formatMxnAmount = (amount) => {
     return `$${safeValue.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
+const getErrorMessage = (error, fallback = "No se pudo enviar el correo de recordatorio.") => {
+    if (error instanceof Error && error.message) return error.message;
+    if (typeof error === "string" && error.trim()) return error;
+    if (error && typeof error === "object") {
+        return error.message || error.error || error.details || fallback;
+    }
+    return fallback;
+};
+
 export default async function (req) {
     const corsHeaders = {
         "Access-Control-Allow-Origin": "*",
@@ -163,13 +172,14 @@ export default async function (req) {
             throw error;
         }
 
-        return new Response(JSON.stringify({ success: true, data }), {
+        return new Response(JSON.stringify({ success: true, channel: "email", data }), {
             status: 200,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
     } catch (err) {
-        console.error("Function Error:", err.message);
-        return new Response(JSON.stringify({ success: false, error: err.message }), {
+        const message = getErrorMessage(err);
+        console.error("Function Error:", message, err);
+        return new Response(JSON.stringify({ success: false, channel: "email", error: message }), {
             status: 500,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
         });

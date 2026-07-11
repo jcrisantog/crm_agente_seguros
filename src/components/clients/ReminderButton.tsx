@@ -18,14 +18,67 @@ type PaymentCard = {
     banco?: string;
 };
 
+type ChannelStatus = "success" | "failed" | "unknown" | "skipped";
+
+type ChannelResult = {
+    status: ChannelStatus;
+    message?: string;
+    technical?: unknown;
+};
+
+const UNKNOWN_SEND_STATUS_MESSAGE = "No se pudo confirmar el estado del envio. Es posible que el recordatorio se haya enviado.";
+
 function formatMxnAmount(amount: unknown) {
     const value = Number(amount ?? 0);
     const safeValue = Number.isFinite(value) ? value : 0;
-    return `$${safeValue.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return `$${safeValue.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function resolvePrimaMnxAmount(policy: Record<string, unknown>) {
     return policy.prima_mnx ?? policy.prima_por_periodo ?? policy.net_premium ?? 0;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null;
+}
+
+function getStringField(value: unknown, key: string) {
+    if (!isRecord(value)) return null;
+    const field = value[key];
+    return typeof field === "string" && field.trim() ? field : null;
+}
+
+function getSafeErrorMessage(error: unknown, fallback = UNKNOWN_SEND_STATUS_MESSAGE): string {
+    if (error instanceof Error && error.message.trim()) {
+        return error.message;
+    }
+
+    if (typeof error === "string" && error.trim()) {
+        return error;
+    }
+
+    const directMessage = getStringField(error, "message")
+        || getStringField(error, "error")
+        || getStringField(error, "details")
+        || getStringField(error, "data");
+
+    if (directMessage) return directMessage;
+
+    if (isRecord(error)) {
+        const nestedMessage = getStringField(error.error, "message")
+            || getStringField(error.error, "error")
+            || getStringField(error.error, "details");
+
+        if (nestedMessage) return nestedMessage;
+    }
+
+    return fallback;
+}
+
+function formatLocalDate(dateStr: string) {
+    if (!dateStr) return "";
+    const date = new Date(dateStr + "T12:00:00");
+    return date.toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
 }
 
 export function ReminderButton({ policyNumber, clientName, policyId, clientId }: ReminderButtonProps) {
@@ -34,15 +87,45 @@ export function ReminderButton({ policyNumber, clientName, policyId, clientId }:
     const handleSendReminder = async () => {
         setIsLoading(true);
 
+        let emailResult: ChannelResult = { status: "unknown", message: UNKNOWN_SEND_STATUS_MESSAGE };
+        let whatsappResult: ChannelResult = {
+            status: "skipped",
+            message: "WhatsApp no se intento porque el correo fallo antes de continuar.",
+        };
+
         try {
-            // 1. Mandar correo (Inforisge Function)
-            const { data, error } = await insforge.functions.invoke('send-reminder-email', {
-                body: { client_id: clientId, policy_id: policyId }
+            const { data, error } = await insforge.functions.invoke("send-reminder-email", {
+                body: { client_id: clientId, policy_id: policyId },
             });
 
-            // 2. Mandar llamada a webhook directamente desde el front vía proxy
+            if (error) {
+                emailResult = {
+                    status: "unknown",
+                    message: getSafeErrorMessage(error, UNKNOWN_SEND_STATUS_MESSAGE),
+                    technical: error,
+                };
+                console.warn("No se pudo confirmar el correo de recordatorio:", error);
+            } else if (data?.success === false) {
+                emailResult = {
+                    status: "failed",
+                    message: getSafeErrorMessage(data, "El correo no pudo enviarse."),
+                    technical: data,
+                };
+                console.error("La funcion de correo reporto fallo:", data);
+            } else {
+                emailResult = { status: "success" };
+            }
+        } catch (emailErr) {
+            emailResult = {
+                status: "unknown",
+                message: getSafeErrorMessage(emailErr, UNKNOWN_SEND_STATUS_MESSAGE),
+                technical: emailErr,
+            };
+            console.warn("Error al invocar la funcion de correo:", emailErr);
+        }
+
+        if (emailResult.status !== "failed") {
             try {
-                // Obtenemos los datos frescos de la póliza para el webhook
                 const { data: policyData } = await insforge.database
                     .from("client_products")
                     .select("*, clients(*)")
@@ -55,36 +138,39 @@ export function ReminderButton({ policyNumber, clientName, policyId, clientId }:
                     .limit(1)
                     .single();
 
-                if (policyData && settings) {
-                    // Lógica para extraer tarjeta principal del array 'tarjetas'
-                    const tarjetasArray = Array.isArray(policyData.tarjetas) ? policyData.tarjetas as PaymentCard[] : [];
+                if (!policyData || !settings) {
+                    whatsappResult = {
+                        status: "failed",
+                        message: "No se encontraron datos suficientes de la poliza o configuracion para enviar WhatsApp.",
+                        technical: { policyData, settings },
+                    };
+                    console.warn("Datos insuficientes para WhatsApp:", { policyData, settings });
+                } else {
+                    const tarjetasArray = Array.isArray(policyData.tarjetas)
+                        ? policyData.tarjetas as PaymentCard[]
+                        : [];
                     const mainCard = tarjetasArray.find((t) => t.is_main) || tarjetasArray[0] || {};
-                    
                     const bancoFinal = mainCard.banco || "Pendiente";
                     const terminacionFinal = mainCard.no_tarjeta || "S/N";
 
-                    // Corrección de desfase de fecha (UTC a Local)
-                    const formatLocalDate = (dateStr: string) => {
-                        if (!dateStr) return "";
-                        const date = new Date(dateStr + "T12:00:00"); 
-                        return date.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
-                    };
-
                     const msiActive = settings.msi_active === true;
                     let msiApplies = false;
-                    
+
                     const paymentLimitMinus10 = new Date(policyData.payment_limit + "T12:00:00");
                     paymentLimitMinus10.setDate(paymentLimitMinus10.getDate() - 10);
-                    const paymentLimitMinus10StrFormat = paymentLimitMinus10.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
-                    
+                    const paymentLimitMinus10StrFormat = paymentLimitMinus10.toLocaleDateString("es-MX", {
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                    });
+
                     let promoDateToShowStr = paymentLimitMinus10StrFormat;
 
                     if (msiActive && settings.msi_start_date && settings.msi_end_date) {
                         const promoStartDate = new Date(settings.msi_start_date + "T00:00:00");
                         const promoEndDate = new Date(settings.msi_end_date + "T23:59:59");
                         const now = new Date();
-                        
-                        // Set hours to 0 to compare dates easily
+
                         const nowNoTime = new Date(now);
                         nowNoTime.setHours(0, 0, 0, 0);
                         const promoStartNoTime = new Date(promoStartDate);
@@ -98,13 +184,9 @@ export function ReminderButton({ policyNumber, clientName, policyId, clientId }:
                             if (promoEndNoTime <= paymentLimitMinus10NoTime) {
                                 msiApplies = true;
                                 promoDateToShowStr = formatLocalDate(settings.msi_end_date);
-                            } else {
-                                if (nowNoTime > paymentLimitMinus10NoTime) {
-                                    msiApplies = false;
-                                } else {
-                                    msiApplies = true;
-                                    promoDateToShowStr = paymentLimitMinus10StrFormat;
-                                }
+                            } else if (nowNoTime <= paymentLimitMinus10NoTime) {
+                                msiApplies = true;
+                                promoDateToShowStr = paymentLimitMinus10StrFormat;
                             }
                         }
                     }
@@ -115,6 +197,7 @@ export function ReminderButton({ policyNumber, clientName, policyId, clientId }:
                         if (msiOptions.length === 1) formattedMsi = msiOptions[0];
                         else formattedMsi = msiOptions.slice(0, -1).join(", ") + " y " + msiOptions[msiOptions.length - 1];
                     }
+
                     const primaMnxFormatted = formatMxnAmount(resolvePrimaMnxAmount(policyData));
 
                     const payload = {
@@ -129,47 +212,67 @@ export function ReminderButton({ policyNumber, clientName, policyId, clientId }:
                         banco: bancoFinal,
                         terminacion: terminacionFinal,
                         policy_number: policyData.policy_number,
-                        source: 'manual_button'
+                        source: "manual_button",
                     };
 
-                    const webhookResponse = await fetch('/api/webhook-proxy', {
-                        method: 'POST',
+                    const webhookResponse = await fetch("/api/webhook-proxy", {
+                        method: "POST",
                         headers: {
-                            'Content-Type': 'application/json',
+                            "Content-Type": "application/json",
                         },
-                        body: JSON.stringify(payload)
+                        body: JSON.stringify(payload),
                     });
 
                     const webhookResult = await webhookResponse.json().catch(() => null);
                     if (!webhookResponse.ok || webhookResult?.success === false) {
-                        throw new Error(webhookResult?.error || webhookResult?.data || "No se pudo enviar WhatsApp");
+                        whatsappResult = {
+                            status: "failed",
+                            message: getSafeErrorMessage(webhookResult, "WhatsApp no se pudo enviar o confirmar."),
+                            technical: webhookResult,
+                        };
+                        console.warn("El proxy de WhatsApp reporto fallo:", webhookResult);
+                    } else {
+                        whatsappResult = { status: "success" };
                     }
                 }
             } catch (webhookErr) {
-                const webhookMessage = webhookErr instanceof Error ? webhookErr.message : "No se pudo enviar WhatsApp.";
-                console.warn("Webhook falló, pero el correo se intentó enviar:", webhookErr);
-                toast.warning("Correo enviado, WhatsApp no se pudo enviar", {
-                    description: webhookMessage,
-                    duration: 6000,
-                });
+                whatsappResult = {
+                    status: "unknown",
+                    message: getSafeErrorMessage(webhookErr, "WhatsApp no se pudo enviar o confirmar."),
+                    technical: webhookErr,
+                };
+                console.warn("Webhook fallo, pero el correo fue confirmado:", webhookErr);
             }
+        }
 
-            if (error) throw error;
-            if (data?.success === false) throw new Error(data.error);
-
+        if (emailResult.status === "success" && whatsappResult.status === "success") {
             toast.success(`Recordatorio enviado a ${clientName}`, {
-                description: `Se ha enviado el correo para la póliza ${policyNumber}.`,
+                description: `Se envio por correo y WhatsApp para la poliza ${policyNumber}.`,
                 duration: 5000,
             });
-        } catch (error: unknown) {
-            const message = error instanceof Error ? error.message : "Ocurrió un error inesperado.";
-            console.error("Error sending reminder:", error);
-            toast.error("Error al enviar recordatorio", {
-                description: message,
+        } else if (emailResult.status === "success") {
+            toast.warning("Correo enviado, WhatsApp no se pudo confirmar", {
+                description: whatsappResult.message || "El correo fue enviado, pero WhatsApp no pudo confirmarse.",
+                duration: 7000,
             });
-        } finally {
-            setIsLoading(false);
+        } else if (emailResult.status === "unknown" && whatsappResult.status === "success") {
+            toast.warning("WhatsApp enviado, correo no se pudo confirmar", {
+                description: emailResult.message || UNKNOWN_SEND_STATUS_MESSAGE,
+                duration: 7000,
+            });
+        } else if (emailResult.status === "unknown") {
+            toast.warning("No se pudo confirmar el envio del correo", {
+                description: `${emailResult.message || UNKNOWN_SEND_STATUS_MESSAGE} ${whatsappResult.message || "WhatsApp tampoco pudo confirmarse."}`,
+                duration: 7000,
+            });
+        } else {
+            toast.error("Error al enviar recordatorio", {
+                description: `${emailResult.message || "El correo no pudo enviarse."} WhatsApp no fue ejecutado.`,
+                duration: 7000,
+            });
         }
+
+        setIsLoading(false);
     };
 
     return (
