@@ -27,7 +27,6 @@ import {
     Loader2,
     CheckCircle,
     Tag,
-    Send,
     Receipt
 } from "lucide-react";
 
@@ -214,7 +213,7 @@ export default function SettingsPage() {
     const [isLoadingLogs, setIsLoadingLogs] = useState(false);
     const [isLoadingMsiLogs, setIsLoadingMsiLogs] = useState(false);
     const [isRunningJob, setIsRunningJob] = useState(false);
-    const [isSendingMsi, setIsSendingMsi] = useState(false);
+    const [, setIsSendingMsi] = useState(false);
     const [isMsiConfirmationOpen, setIsMsiConfirmationOpen] = useState(false);
 
     const fetchLogs = async () => {
@@ -703,7 +702,7 @@ export default function SettingsPage() {
                                     <div className="flex items-center justify-between bg-muted/30 p-4 rounded-lg border border-border">
                                         <div>
                                             <p className="font-medium">Promoción MSI Activa</p>
-                                            <p className="text-xs text-muted-foreground">Si está activa, los recordatorios de pólizas candidatas incluirán la promoción MSI.</p>
+                                            <p className="text-xs text-muted-foreground">Si está activa, aplica como fallback para pólizas sin promoción MSI propia. Las pólizas activas en MSI usan su configuración individual.</p>
                                         </div>
                                         <div 
                                             onClick={() => setReminderSettings({ ...reminderSettings, msi_active: !reminderSettings.msi_active })}
@@ -762,7 +761,7 @@ export default function SettingsPage() {
                                                 />
                                             </div>
                                         </div>
-                                        <p className="text-[11px] text-muted-foreground mt-2">La promoción aplicará a las pólizas que cobren los próximos días basados en tu configuración, y solo si la fecha actual está dentro de este rango.</p>
+                                        <p className="text-[11px] text-muted-foreground mt-2">Esta configuración aplica solo como respaldo cuando la póliza no tiene MSI activo. Si la póliza tiene MSI propio, se usan sus meses y fechas.</p>
                                     </div>
 
                                     <div className="space-y-2">

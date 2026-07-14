@@ -1,10 +1,133 @@
 import { createClient } from "npm:@insforge/sdk";
 import { Resend } from "npm:resend";
 
+const BATCH_VERSION = "policy-msi-resolution-2026-07-14";
+
+const getEnv = (name) => globalThis.Deno?.env?.get(name) || "";
+
 const formatMxnAmount = (amount) => {
     const value = Number(amount ?? 0);
     const safeValue = Number.isFinite(value) ? value : 0;
     return `$${safeValue.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
+
+const MSI_OPTIONS = ["3", "6", "9", "12"];
+
+const normalizeMsiOptions = (options) => {
+    const rawOptions = Array.isArray(options)
+        ? options
+        : typeof options === "string"
+            ? options.split(",")
+            : [];
+
+    return rawOptions
+        .map((option) => String(option).trim())
+        .filter((option) => MSI_OPTIONS.includes(option));
+};
+
+const formatMsiOptions = (options) => {
+    if (options.length === 0) return "";
+    if (options.length === 1) return options[0];
+    return `${options.slice(0, -1).join(", ")} y ${options[options.length - 1]}`;
+};
+
+const normalizeDateValue = (dateValue) => {
+    if (!dateValue) return "";
+    if (dateValue instanceof Date && !Number.isNaN(dateValue.getTime())) {
+        return dateValue.toISOString().slice(0, 10);
+    }
+
+    const rawValue = String(dateValue).trim();
+    const isoDateMatch = rawValue.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (isoDateMatch) return isoDateMatch[1];
+
+    const parsedDate = new Date(rawValue);
+    if (Number.isNaN(parsedDate.getTime())) return "";
+    return parsedDate.toISOString().slice(0, 10);
+};
+
+const getLocalNoonDate = (dateValue) => {
+    const normalizedDate = normalizeDateValue(dateValue);
+    if (!normalizedDate) return null;
+    const date = new Date(`${normalizedDate}T12:00:00`);
+    return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const getMexicoDateNoTime = () => {
+    const mexicoDate = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Mexico_City" }));
+    mexicoDate.setHours(0, 0, 0, 0);
+    return mexicoDate;
+};
+
+const getDateNoTime = (dateStr) => {
+    const normalizedDate = normalizeDateValue(dateStr);
+    const date = new Date(`${normalizedDate}T00:00:00`);
+    if (Number.isNaN(date.getTime())) return null;
+    date.setHours(0, 0, 0, 0);
+    return date;
+};
+
+const resolveMsiCandidate = (config, source, paymentLimit, formatL) => {
+    const emptyResult = {
+        applies: false,
+        source: null,
+        formattedOptions: "",
+        promoDateToShow: formatL(paymentLimit),
+    };
+
+    const options = normalizeMsiOptions(config?.msi_options);
+    if (options.length === 0 || !config?.msi_start_date || !config?.msi_end_date || !paymentLimit) {
+        return emptyResult;
+    }
+
+    const paymentLimitMinus10 = getLocalNoonDate(paymentLimit);
+    if (!paymentLimitMinus10) return emptyResult;
+    paymentLimitMinus10.setDate(paymentLimitMinus10.getDate() - 10);
+
+    const nowNoTime = getMexicoDateNoTime();
+    const promoStartNoTime = getDateNoTime(config.msi_start_date);
+    const promoEndNoTime = getDateNoTime(config.msi_end_date);
+    if (!promoStartNoTime || !promoEndNoTime) return emptyResult;
+
+    const paymentLimitMinus10NoTime = new Date(paymentLimitMinus10);
+    paymentLimitMinus10NoTime.setHours(0, 0, 0, 0);
+
+    if (nowNoTime < promoStartNoTime || nowNoTime > promoEndNoTime) {
+        return emptyResult;
+    }
+
+    let promoDateToShow = "";
+    if (promoEndNoTime <= paymentLimitMinus10NoTime) {
+        promoDateToShow = formatL(config.msi_end_date);
+    } else if (nowNoTime <= paymentLimitMinus10NoTime) {
+        promoDateToShow = paymentLimitMinus10.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
+    } else {
+        return emptyResult;
+    }
+
+    return {
+        applies: true,
+        source,
+        formattedOptions: formatMsiOptions(options),
+        promoDateToShow,
+    };
+};
+
+const resolveEffectiveMsi = ({ settings, policy, paymentLimit, formatL }) => {
+    if (policy?.msi_promo_active === true) {
+        return resolveMsiCandidate(policy, "policy", paymentLimit, formatL);
+    }
+
+    if (settings?.msi_active === true) {
+        return resolveMsiCandidate(settings, "global", paymentLimit, formatL);
+    }
+
+    return {
+        applies: false,
+        source: null,
+        formattedOptions: "",
+        promoDateToShow: formatL(paymentLimit),
+    };
 };
 
 export default async function (req) {
@@ -21,9 +144,21 @@ export default async function (req) {
     const log = [];
 
     try {
+        const insforgeBaseUrl = getEnv("INSFORGE_BASE_URL");
+        const insforgeAnonKey = getEnv("ANON_KEY") || getEnv("INSFORGE_ANON_KEY");
+        const n8nWebhookUrl = getEnv("N8N_WEBHOOK_URL");
+        const n8nApiToken = getEnv("N8N_API_TOKEN");
+
+        if (!insforgeBaseUrl || !insforgeAnonKey) {
+            return new Response(JSON.stringify({
+                success: false,
+                error: "Falta configurar INSFORGE_BASE_URL o ANON_KEY para automated-reminders-batch.",
+            }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+
         const client = createClient({
-            baseUrl: "https://fbmf8gg8.us-west.insforge.app",
-            anonKey: "ik_5863262628f9d1dc6db41c29ffd7c8ef"
+            baseUrl: insforgeBaseUrl,
+            anonKey: insforgeAnonKey
         });
 
         // 1. Obtener ajustes
@@ -64,6 +199,7 @@ export default async function (req) {
             }), { status: 200, headers: corsHeaders });
         }
 
+        log.push(`Version batch: ${BATCH_VERSION}`);
         log.push(`Iniciando procesamiento a las ${new Date().toISOString()}`);
 
         // 3. Obtener fechas objetivo
@@ -86,6 +222,30 @@ export default async function (req) {
         });
 
         log.push(`Fechas objetivo de vencimiento: ${targetDates.join(", ")}`);
+
+        const runDateParts = new Intl.DateTimeFormat("en-US", {
+            timeZone: "America/Mexico_City",
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+        }).formatToParts(new Date());
+        const runY = runDateParts.find(p => p.type === "year").value;
+        const runM = runDateParts.find(p => p.type === "month").value;
+        const runD = runDateParts.find(p => p.type === "day").value;
+        const runKey = `automated-reminders-batch:${runY}-${runM}-${runD}:${currentTime}:force=${force}`;
+        const { error: lockError } = await client.database
+            .from("reminder_run_locks")
+            .insert([{ run_key: runKey }]);
+
+        if (lockError) {
+            log.push(`Ejecución duplicada bloqueada por lock: ${runKey}`);
+            return new Response(JSON.stringify({
+                success: true,
+                duplicate: true,
+                message: "Esta ejecución ya estaba en proceso o ya se ejecutó en este minuto.",
+                log,
+            }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
 
         // 4. Buscar pólizas (primero todas para depurar)
         const { data: allPolicies } = await client.database.from("client_products").select("id, payment_limit, status");
@@ -119,7 +279,17 @@ export default async function (req) {
             }
 
             // Calcular dias restantes
-            const paymentLimit = new Date(policy.payment_limit + "T12:00:00");
+            const normalizedPaymentLimit = normalizeDateValue(policy.payment_limit);
+            const paymentLimit = getLocalNoonDate(policy.payment_limit);
+            if (!paymentLimit) {
+                results.push({
+                    policy_id: policy.id,
+                    success: false,
+                    error: `Fecha de vencimiento invalida: ${policy.payment_limit}`,
+                });
+                continue;
+            }
+
             const today = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Mexico_City" }));
             today.setHours(12, 0, 0, 0); // Normalizar
             paymentLimit.setHours(12, 0, 0, 0);
@@ -140,6 +310,28 @@ export default async function (req) {
                 continue;
             }
 
+            const sendKey = `reminder:${policy.id}:${normalizedPaymentLimit}:diff=${diffDays}`;
+            const { error: sendLockError } = await client.database
+                .from("reminder_send_locks")
+                .insert([{
+                    send_key: sendKey,
+                    policy_id: String(policy.id),
+                    payment_limit: normalizedPaymentLimit,
+                    source: "automated-reminders-batch",
+                }]);
+
+            if (sendLockError) {
+                log.push(`Envio duplicado omitido por lock de poliza ${policy.policy_number}: ${sendKey}`);
+                results.push({
+                    policy_id: policy.id,
+                    success: false,
+                    skipped: true,
+                    duplicate: true,
+                    error: "Omitida por lock de envio duplicado",
+                });
+                continue;
+            }
+
             // Determine card info BEFORE html replacement so we can use it
             const tArray = Array.isArray(policy.tarjetas) ? policy.tarjetas : [];
             const mC = tArray.find(t => t.is_main) || tArray[0] || {};
@@ -147,76 +339,37 @@ export default async function (req) {
             const tF = mC.no_tarjeta || "S/N";
 
             const formatL = (ds) => {
-                if (!ds) return "";
-                const d = new Date(ds + "T12:00:00");
+                const d = getLocalNoonDate(ds);
+                if (!d) return "";
                 return d.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
             };
 
-            const paymentLimitMinus10 = new Date(policy.payment_limit + "T12:00:00");
-            paymentLimitMinus10.setDate(paymentLimitMinus10.getDate() - 10);
-            const paymentLimitMinus10StrFormat = paymentLimitMinus10.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
-
-            // MSI logic
-            const msiActive = settings.msi_active === true;
-            let msiApplies = false;
-            let promoDateToShowStr = paymentLimitMinus10StrFormat;
-
-            if (msiActive && settings.msi_start_date && settings.msi_end_date) {
-                const promoStartDate = new Date(settings.msi_start_date + "T00:00:00");
-                const promoEndDate = new Date(settings.msi_end_date + "T23:59:59");
-                const now = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Mexico_City" }));
-
-                // Set hours to 0 to compare dates easily
-                const nowNoTime = new Date(now);
-                nowNoTime.setHours(0, 0, 0, 0);
-
-                const promoStartNoTime = new Date(promoStartDate);
-                promoStartNoTime.setHours(0, 0, 0, 0);
-                const promoEndNoTime = new Date(promoEndDate);
-                promoEndNoTime.setHours(0, 0, 0, 0);
-                const paymentLimitMinus10NoTime = new Date(paymentLimitMinus10);
-                paymentLimitMinus10NoTime.setHours(0, 0, 0, 0);
-
-                if (nowNoTime >= promoStartNoTime && nowNoTime <= promoEndNoTime) {
-                    if (promoEndNoTime <= paymentLimitMinus10NoTime) {
-                        msiApplies = true;
-                        promoDateToShowStr = formatL(settings.msi_end_date);
-                    } else {
-                        if (nowNoTime > paymentLimitMinus10NoTime) {
-                            msiApplies = false;
-                        } else {
-                            msiApplies = true;
-                            promoDateToShowStr = paymentLimitMinus10StrFormat;
-                        }
-                    }
-                }
-            }
+            const effectiveMsi = resolveEffectiveMsi({
+                settings,
+                policy,
+                paymentLimit: normalizedPaymentLimit,
+                formatL,
+            });
+            log.push(`MSI ${policy.policy_number}: source=${effectiveMsi.source || "none"}, applies=${effectiveMsi.applies}, options=${effectiveMsi.formattedOptions || "N/A"}, policyActive=${policy.msi_promo_active === true}, policyOptions=${formatMsiOptions(normalizeMsiOptions(policy.msi_options)) || "N/A"}, globalActive=${settings.msi_active === true}, globalOptions=${formatMsiOptions(normalizeMsiOptions(settings.msi_options)) || "N/A"}`);
 
             let html = "";
             let subject = "";
             let promocionWebhook = "no";
             let cuantosmsiWebhook = "N/A";
-            let fechaMaxPagoWebhook = formatL(policy.payment_limit);
-
-            const msiOptions = settings.msi_options || [];
-            let formattedMsi = "";
-            if (msiOptions.length > 0) {
-                if (msiOptions.length === 1) formattedMsi = msiOptions[0];
-                else formattedMsi = msiOptions.slice(0, -1).join(", ") + " y " + msiOptions[msiOptions.length - 1];
-            }
+            let fechaMaxPagoWebhook = formatL(normalizedPaymentLimit);
 
             const primaMnxFormatted = formatMxnAmount(policy.prima_mnx);
 
-            if (msiApplies) {
+            if (effectiveMsi.applies) {
                 html = (settings.msi_email_template || settings.email_template)
                     .replaceAll("{{nombre}}", policy.client.full_name)
                     .replaceAll("{{poliza}}", policy.policy_number || "Pendiente")
-                    .replaceAll("{{msi_opciones}}", formattedMsi)
-                    .replaceAll("{{fecha_pago}}", formatL(policy.payment_limit))
+                    .replaceAll("{{msi_opciones}}", effectiveMsi.formattedOptions)
+                    .replaceAll("{{fecha_pago}}", formatL(normalizedPaymentLimit))
                     .replaceAll("{{dias_restantes}}", diffDays.toString())
                     .replaceAll("{{monto}}", primaMnxFormatted)
                     .replaceAll("{{prima_mnx}}", primaMnxFormatted)
-                    .replaceAll("{{fecha_pago_menos_10}}", promoDateToShowStr)
+                    .replaceAll("{{fecha_pago_menos_10}}", effectiveMsi.promoDateToShow)
                     .replaceAll("{{tarjeta_principal}}", tF)
                     .replaceAll("{{banco}}", bF)
                     .replaceAll("{{terminacion}}", tF);
@@ -226,12 +379,12 @@ export default async function (req) {
                     .replaceAll("{{poliza}}", policy.policy_number || "");
 
                 promocionWebhook = "si";
-                cuantosmsiWebhook = formattedMsi;
-                fechaMaxPagoWebhook = promoDateToShowStr;
+                cuantosmsiWebhook = effectiveMsi.formattedOptions;
+                fechaMaxPagoWebhook = effectiveMsi.promoDateToShow;
             } else {
                 html = settings.email_template
                     .replaceAll("{{nombre}}", policy.client.full_name)
-                    .replaceAll("{{fecha_pago}}", formatL(policy.payment_limit))
+                    .replaceAll("{{fecha_pago}}", formatL(normalizedPaymentLimit))
                     .replaceAll("{{dias_restantes}}", diffDays.toString())
                     .replaceAll("{{monto}}", primaMnxFormatted)
                     .replaceAll("{{prima_mnx}}", primaMnxFormatted)
@@ -251,31 +404,36 @@ export default async function (req) {
 
             // individual webhook call to n8n
             try {
-                const webhookResponse = await fetch("https://n8n.minegocio-digital.com/webhook/3fb72394-de4b-410d-ab28-8ca0dfbc6547", {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'api_token': '12345678'
-                    },
-                    body: JSON.stringify({
-                        promocion: promocionWebhook,
-                        nombre: policy.client.full_name,
-                        telefono: policy.client?.phone || "",
-                        fecha_corte: formatL(policy.payment_limit),
-                        monto: primaMnxFormatted,
-                        cuantosmsi: cuantosmsiWebhook,
-                        fecha_max_pago: fechaMaxPagoWebhook,
-                        banco: bF,
-                        terminacion: tF,
-                        policy_number: policy.policy_number,
-                        source: 'automated_batch_server'
-                    }),
-                    signal: AbortSignal.timeout(10000)
-                });
+                if (!n8nWebhookUrl || !n8nApiToken) {
+                    log.push("WhatsApp omitido: falta configurar N8N_WEBHOOK_URL o N8N_API_TOKEN.");
+                } else {
+                    const webhookResponse = await fetch(n8nWebhookUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'api_token': n8nApiToken
+                        },
+                        body: JSON.stringify({
+                            promocion: promocionWebhook,
+                            nombre: policy.client.full_name,
+                            telefono: policy.client?.phone || "",
+                            fecha_corte: formatL(normalizedPaymentLimit),
+                            monto: primaMnxFormatted,
+                            cuantosmsi: cuantosmsiWebhook,
+                            fecha_max_pago: fechaMaxPagoWebhook,
+                            banco: bF,
+                            terminacion: tF,
+                            policy_number: policy.policy_number,
+                            msi_source: effectiveMsi.source || "none",
+                            source: 'automated_batch_server'
+                        }),
+                        signal: AbortSignal.timeout(10000)
+                    });
 
-                if (!webhookResponse.ok) {
-                    const errText = await webhookResponse.text();
-                    console.error(`Webhook N8N respondió con error ${webhookResponse.status}: ${errText}`);
+                    if (!webhookResponse.ok) {
+                        const errText = await webhookResponse.text();
+                        console.error(`Webhook N8N respondió con error ${webhookResponse.status}: ${errText}`);
+                    }
                 }
             } catch (wErr) {
                 console.error("Webhook processing error:", wErr.message);
@@ -286,18 +444,32 @@ export default async function (req) {
                 client: policy.client.full_name,
                 success: !emailError,
                 error: emailError?.message,
+                msi_source: effectiveMsi.source || "none",
+                msi_options: effectiveMsi.formattedOptions || "",
                 sent_at: new Date().toISOString()
             });
         }
+
+        const sentCount = results.filter(r => r.success).length;
+        const skippedCount = results.filter(r => r.skipped).length;
+        const failureCount = results.filter(r => !r.success && !r.skipped).length;
+        const logStatus = failureCount > 0
+            ? (sentCount > 0 || skippedCount > 0 ? 'partial' : 'error')
+            : 'success';
+        const logMessage = sentCount > 0
+            ? `Ejecución finalizada con ${sentCount} envíos exitosos${skippedCount > 0 ? ` y ${skippedCount} omitidos por duplicado` : ""}.`
+            : skippedCount > 0
+                ? `Ejecución omitida: ${skippedCount} recordatorio(s) ya habían sido enviados para este vencimiento.`
+                : `Ejecución finalizada con 0 envíos exitosos.`;
 
         const finalResponse = { success: true, log, results };
 
         // 6. Guardar log en DB para historial
         await client.database.from("reminder_logs").insert({
-            status: results.every(r => r.success) ? 'success' : (results.some(r => r.success) ? 'partial' : 'error'),
-            message: `Ejecución finalizada con ${results.filter(r => r.success).length} envíos exitosos.`,
+            status: logStatus,
+            message: logMessage,
             policies_count: policies.length,
-            sent_count: results.filter(r => r.success).length,
+            sent_count: sentCount,
             details: finalResponse
         });
 
@@ -311,9 +483,13 @@ export default async function (req) {
 
         // Intentar guardar log de error si es posible
         try {
+            const insforgeBaseUrl = getEnv("INSFORGE_BASE_URL");
+            const insforgeAnonKey = getEnv("ANON_KEY") || getEnv("INSFORGE_ANON_KEY");
+            if (!insforgeBaseUrl || !insforgeAnonKey) throw new Error("No hay variables InsForge para guardar el error fatal.");
+
             const clientErr = createClient({
-                baseUrl: "https://fbmf8gg8.us-west.insforge.app",
-                anonKey: "ik_5863262628f9d1dc6db41c29ffd7c8ef"
+                baseUrl: insforgeBaseUrl,
+                anonKey: insforgeAnonKey
             });
             await clientErr.database.from("reminder_logs").insert({
                 status: 'error',

@@ -7,6 +7,26 @@ const formatMxnAmount = (amount) => {
     return `$${safeValue.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
+const MSI_OPTIONS = ["3", "6", "9", "12"];
+
+const normalizeMsiOptions = (options) => {
+    const rawOptions = Array.isArray(options)
+        ? options
+        : typeof options === "string"
+            ? options.split(",")
+            : [];
+
+    return rawOptions
+        .map((option) => String(option).trim())
+        .filter((option) => MSI_OPTIONS.includes(option));
+};
+
+const formatMsiOptions = (options) => {
+    if (options.length === 0) return "";
+    if (options.length === 1) return options[0];
+    return `${options.slice(0, -1).join(", ")} y ${options[options.length - 1]}`;
+};
+
 const getErrorMessage = (error, fallback = "No se pudo enviar el correo de recordatorio.") => {
     if (error instanceof Error && error.message) return error.message;
     if (typeof error === "string" && error.trim()) return error;
@@ -14,6 +34,105 @@ const getErrorMessage = (error, fallback = "No se pudo enviar el correo de recor
         return error.message || error.error || error.details || fallback;
     }
     return fallback;
+};
+
+const normalizeDateValue = (dateValue) => {
+    if (!dateValue) return "";
+    if (dateValue instanceof Date && !Number.isNaN(dateValue.getTime())) {
+        return dateValue.toISOString().slice(0, 10);
+    }
+
+    const rawValue = String(dateValue).trim();
+    const isoDateMatch = rawValue.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (isoDateMatch) return isoDateMatch[1];
+
+    const parsedDate = new Date(rawValue);
+    if (Number.isNaN(parsedDate.getTime())) return "";
+    return parsedDate.toISOString().slice(0, 10);
+};
+
+const getLocalNoonDate = (dateValue) => {
+    const normalizedDate = normalizeDateValue(dateValue);
+    if (!normalizedDate) return null;
+    const date = new Date(`${normalizedDate}T12:00:00`);
+    return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const getMexicoDateNoTime = () => {
+    const mexicoDate = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Mexico_City" }));
+    mexicoDate.setHours(0, 0, 0, 0);
+    return mexicoDate;
+};
+
+const getDateNoTime = (dateStr) => {
+    const normalizedDate = normalizeDateValue(dateStr);
+    const date = new Date(`${normalizedDate}T00:00:00`);
+    if (Number.isNaN(date.getTime())) return null;
+    date.setHours(0, 0, 0, 0);
+    return date;
+};
+
+const resolveMsiCandidate = (config, source, paymentLimit, formatL) => {
+    const emptyResult = {
+        applies: false,
+        source: null,
+        formattedOptions: "",
+        promoDateToShow: formatL(paymentLimit),
+    };
+
+    const options = normalizeMsiOptions(config?.msi_options);
+    if (options.length === 0 || !config?.msi_start_date || !config?.msi_end_date || !paymentLimit) {
+        return emptyResult;
+    }
+
+    const paymentLimitMinus10 = getLocalNoonDate(paymentLimit);
+    if (!paymentLimitMinus10) return emptyResult;
+    paymentLimitMinus10.setDate(paymentLimitMinus10.getDate() - 10);
+
+    const nowNoTime = getMexicoDateNoTime();
+    const promoStartNoTime = getDateNoTime(config.msi_start_date);
+    const promoEndNoTime = getDateNoTime(config.msi_end_date);
+    if (!promoStartNoTime || !promoEndNoTime) return emptyResult;
+
+    const paymentLimitMinus10NoTime = new Date(paymentLimitMinus10);
+    paymentLimitMinus10NoTime.setHours(0, 0, 0, 0);
+
+    if (nowNoTime < promoStartNoTime || nowNoTime > promoEndNoTime) {
+        return emptyResult;
+    }
+
+    let promoDateToShow = "";
+    if (promoEndNoTime <= paymentLimitMinus10NoTime) {
+        promoDateToShow = formatL(config.msi_end_date);
+    } else if (nowNoTime <= paymentLimitMinus10NoTime) {
+        promoDateToShow = paymentLimitMinus10.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
+    } else {
+        return emptyResult;
+    }
+
+    return {
+        applies: true,
+        source,
+        formattedOptions: formatMsiOptions(options),
+        promoDateToShow,
+    };
+};
+
+const resolveEffectiveMsi = ({ settings, policy, paymentLimit, formatL }) => {
+    if (policy?.msi_promo_active === true) {
+        return resolveMsiCandidate(policy, "policy", paymentLimit, formatL);
+    }
+
+    if (settings?.msi_active === true) {
+        return resolveMsiCandidate(settings, "global", paymentLimit, formatL);
+    }
+
+    return {
+        applies: false,
+        source: null,
+        formattedOptions: "",
+        promoDateToShow: formatL(paymentLimit),
+    };
 };
 
 export default async function (req) {
@@ -44,7 +163,7 @@ export default async function (req) {
 
         const { data: policyData } = await client.database
             .from("client_products")
-            .select("policy_number, prima_mnx, payment_limit, tarjetas")
+            .select("policy_number, prima_mnx, payment_limit, tarjetas, msi_promo_active, msi_options, msi_start_date, msi_end_date")
             .eq("id", policy_id)
             .single();
 
@@ -59,7 +178,15 @@ export default async function (req) {
         }
 
         // 2. Cálculos
-        const paymentLimit = new Date(policyData.payment_limit);
+        const normalizedPaymentLimit = normalizeDateValue(policyData.payment_limit);
+        const paymentLimit = getLocalNoonDate(policyData.payment_limit);
+        if (!paymentLimit) {
+            return new Response(JSON.stringify({
+                success: false,
+                error: "La poliza no tiene una fecha de vencimiento valida para enviar el recordatorio.",
+            }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+
         const now = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Mexico_City" }));
 
         const diffTime = paymentLimit - now;
@@ -72,70 +199,32 @@ export default async function (req) {
         const tF = mC.no_tarjeta || "S/N";
 
         const formatL = (ds) => {
-            if (!ds) return "";
-            const d = new Date(ds + "T12:00:00");
+            const d = getLocalNoonDate(ds);
+            if (!d) return "";
             return d.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
         };
 
-        const paymentLimitMinus10 = new Date(policyData.payment_limit + "T12:00:00");
-        paymentLimitMinus10.setDate(paymentLimitMinus10.getDate() - 10);
-        const paymentLimitMinus10StrFormat = paymentLimitMinus10.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
-
-        // MSI logic
-        const msiActive = settings.msi_active === true;
-        let msiApplies = false;
-        let promoDateToShowStr = paymentLimitMinus10StrFormat;
-        
-        if (msiActive && settings.msi_start_date && settings.msi_end_date) {
-            const promoStartDate = new Date(settings.msi_start_date + "T00:00:00");
-            const promoEndDate = new Date(settings.msi_end_date + "T23:59:59");
-            
-            // Set hours to 0 to compare dates easily
-            const nowNoTime = new Date(now);
-            nowNoTime.setHours(0, 0, 0, 0);
-            const promoStartNoTime = new Date(promoStartDate);
-            promoStartNoTime.setHours(0, 0, 0, 0);
-            const promoEndNoTime = new Date(promoEndDate);
-            promoEndNoTime.setHours(0, 0, 0, 0);
-            const paymentLimitMinus10NoTime = new Date(paymentLimitMinus10);
-            paymentLimitMinus10NoTime.setHours(0, 0, 0, 0);
-
-            if (nowNoTime >= promoStartNoTime && nowNoTime <= promoEndNoTime) {
-                if (promoEndNoTime <= paymentLimitMinus10NoTime) {
-                    msiApplies = true;
-                    promoDateToShowStr = formatL(settings.msi_end_date);
-                } else {
-                    if (nowNoTime > paymentLimitMinus10NoTime) {
-                        msiApplies = false;
-                    } else {
-                        msiApplies = true;
-                        promoDateToShowStr = paymentLimitMinus10StrFormat;
-                    }
-                }
-            }
-        }
-
-        const msiOptions = settings.msi_options || [];
-        let formattedMsi = "";
-        if (msiOptions.length > 0) {
-            if (msiOptions.length === 1) formattedMsi = msiOptions[0];
-            else formattedMsi = msiOptions.slice(0, -1).join(", ") + " y " + msiOptions[msiOptions.length - 1];
-        }
+        const effectiveMsi = resolveEffectiveMsi({
+            settings,
+            policy: policyData,
+            paymentLimit: normalizedPaymentLimit,
+            formatL,
+        });
 
         let html = "";
         let subject = "";
         const primaMnxFormatted = formatMxnAmount(policyData.prima_mnx);
 
-        if (msiApplies) {
+        if (effectiveMsi.applies) {
             html = (settings.msi_email_template || settings.email_template)
                 .replaceAll("{{nombre}}", userData.full_name)
                 .replaceAll("{{poliza}}", policyData.policy_number || "Pendiente")
-                .replaceAll("{{msi_opciones}}", formattedMsi)
-                .replaceAll("{{fecha_pago}}", formatL(policyData.payment_limit))
+                .replaceAll("{{msi_opciones}}", effectiveMsi.formattedOptions)
+                .replaceAll("{{fecha_pago}}", formatL(normalizedPaymentLimit))
                 .replaceAll("{{dias_restantes}}", diffDays.toString())
                 .replaceAll("{{monto}}", primaMnxFormatted)
                 .replaceAll("{{prima_mnx}}", primaMnxFormatted)
-                .replaceAll("{{fecha_pago_menos_10}}", promoDateToShowStr)
+                .replaceAll("{{fecha_pago_menos_10}}", effectiveMsi.promoDateToShow)
                 .replaceAll("{{tarjeta_principal}}", tF)
                 .replaceAll("{{banco}}", bF)
                 .replaceAll("{{terminacion}}", tF);
@@ -146,7 +235,7 @@ export default async function (req) {
         } else {
             html = settings.email_template
                 .replaceAll("{{nombre}}", userData.full_name)
-                .replaceAll("{{fecha_pago}}", formatL(policyData.payment_limit))
+                .replaceAll("{{fecha_pago}}", formatL(normalizedPaymentLimit))
                 .replaceAll("{{dias_restantes}}", diffDays.toString())
                 .replaceAll("{{monto}}", primaMnxFormatted)
                 .replaceAll("{{prima_mnx}}", primaMnxFormatted)

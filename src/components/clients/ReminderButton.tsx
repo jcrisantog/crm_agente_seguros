@@ -4,6 +4,7 @@ import { Bell, Send } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
 import { insforge } from "@/lib/insforge";
+import { formatLocalDate, resolveEffectiveMsi } from "@/lib/msi";
 
 interface ReminderButtonProps {
     policyNumber: string;
@@ -75,12 +76,6 @@ function getSafeErrorMessage(error: unknown, fallback = UNKNOWN_SEND_STATUS_MESS
     return fallback;
 }
 
-function formatLocalDate(dateStr: string) {
-    if (!dateStr) return "";
-    const date = new Date(dateStr + "T12:00:00");
-    return date.toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
-}
-
 export function ReminderButton({ policyNumber, clientName, policyId, clientId }: ReminderButtonProps) {
     const [isLoading, setIsLoading] = useState(false);
 
@@ -126,25 +121,48 @@ export function ReminderButton({ policyNumber, clientName, policyId, clientId }:
 
         if (emailResult.status !== "failed") {
             try {
-                const { data: policyData } = await insforge.database
-                    .from("client_products")
-                    .select("*, clients(*)")
-                    .eq("id", policyId)
-                    .single();
+                const [policyResponse, settingsResponse, clientResponse] = await Promise.all([
+                    insforge.database
+                        .from("client_products")
+                        .select("*")
+                        .eq("id", policyId)
+                        .single(),
+                    insforge.database
+                        .from("reminder_settings")
+                        .select("*")
+                        .limit(1)
+                        .maybeSingle(),
+                    insforge.database
+                        .from("clients")
+                        .select("full_name, phone")
+                        .eq("id", clientId)
+                        .single(),
+                ]);
 
-                const { data: settings } = await insforge.database
-                    .from("reminder_settings")
-                    .select("*")
-                    .limit(1)
-                    .single();
+                const policyData = policyResponse.data;
+                const settings = settingsResponse.data;
+                const clientData = clientResponse.data;
 
                 if (!policyData || !settings) {
+                    const details = [
+                        !policyData ? "poliza no encontrada" : null,
+                        !settings ? "configuracion de recordatorios no encontrada" : null,
+                    ].filter(Boolean).join("; ");
+
                     whatsappResult = {
                         status: "failed",
-                        message: "No se encontraron datos suficientes de la poliza o configuracion para enviar WhatsApp.",
-                        technical: { policyData, settings },
+                        message: `No se encontraron datos suficientes para enviar WhatsApp: ${details}.`,
+                        technical: {
+                            policyError: policyResponse.error,
+                            settingsError: settingsResponse.error,
+                            clientError: clientResponse.error,
+                        },
                     };
-                    console.warn("Datos insuficientes para WhatsApp:", { policyData, settings });
+                    console.warn("Datos insuficientes para WhatsApp:", {
+                        policyResponse,
+                        settingsResponse,
+                        clientResponse,
+                    });
                 } else {
                     const tarjetasArray = Array.isArray(policyData.tarjetas)
                         ? policyData.tarjetas as PaymentCard[]
@@ -153,65 +171,27 @@ export function ReminderButton({ policyNumber, clientName, policyId, clientId }:
                     const bancoFinal = mainCard.banco || "Pendiente";
                     const terminacionFinal = mainCard.no_tarjeta || "S/N";
 
-                    const msiActive = settings.msi_active === true;
-                    let msiApplies = false;
-
-                    const paymentLimitMinus10 = new Date(policyData.payment_limit + "T12:00:00");
-                    paymentLimitMinus10.setDate(paymentLimitMinus10.getDate() - 10);
-                    const paymentLimitMinus10StrFormat = paymentLimitMinus10.toLocaleDateString("es-MX", {
-                        day: "numeric",
-                        month: "long",
-                        year: "numeric",
+                    const effectiveMsi = resolveEffectiveMsi({
+                        settings,
+                        policy: policyData,
+                        paymentLimit: policyData.payment_limit,
                     });
-
-                    let promoDateToShowStr = paymentLimitMinus10StrFormat;
-
-                    if (msiActive && settings.msi_start_date && settings.msi_end_date) {
-                        const promoStartDate = new Date(settings.msi_start_date + "T00:00:00");
-                        const promoEndDate = new Date(settings.msi_end_date + "T23:59:59");
-                        const now = new Date();
-
-                        const nowNoTime = new Date(now);
-                        nowNoTime.setHours(0, 0, 0, 0);
-                        const promoStartNoTime = new Date(promoStartDate);
-                        promoStartNoTime.setHours(0, 0, 0, 0);
-                        const promoEndNoTime = new Date(promoEndDate);
-                        promoEndNoTime.setHours(0, 0, 0, 0);
-                        const paymentLimitMinus10NoTime = new Date(paymentLimitMinus10);
-                        paymentLimitMinus10NoTime.setHours(0, 0, 0, 0);
-
-                        if (nowNoTime >= promoStartNoTime && nowNoTime <= promoEndNoTime) {
-                            if (promoEndNoTime <= paymentLimitMinus10NoTime) {
-                                msiApplies = true;
-                                promoDateToShowStr = formatLocalDate(settings.msi_end_date);
-                            } else if (nowNoTime <= paymentLimitMinus10NoTime) {
-                                msiApplies = true;
-                                promoDateToShowStr = paymentLimitMinus10StrFormat;
-                            }
-                        }
-                    }
-
-                    const msiOptions = settings.msi_options || [];
-                    let formattedMsi = "";
-                    if (msiOptions.length > 0) {
-                        if (msiOptions.length === 1) formattedMsi = msiOptions[0];
-                        else formattedMsi = msiOptions.slice(0, -1).join(", ") + " y " + msiOptions[msiOptions.length - 1];
-                    }
 
                     const primaMnxFormatted = formatMxnAmount(resolvePrimaMnxAmount(policyData));
 
                     const payload = {
-                        promocion: msiApplies ? "si" : "no",
-                        nombre: policyData.clients?.full_name || clientName,
-                        telefono: policyData.clients?.phone || "",
+                        promocion: effectiveMsi.applies ? "si" : "no",
+                        nombre: clientData?.full_name || clientName,
+                        telefono: clientData?.phone || "",
                         fecha_corte: formatLocalDate(policyData.payment_limit),
                         monto: primaMnxFormatted,
                         prima_mnx: primaMnxFormatted,
-                        cuantosmsi: msiApplies ? formattedMsi : "N/A",
-                        fecha_max_pago: msiApplies ? promoDateToShowStr : formatLocalDate(policyData.payment_limit),
+                        cuantosmsi: effectiveMsi.applies ? effectiveMsi.formattedOptions : "N/A",
+                        fecha_max_pago: effectiveMsi.applies ? effectiveMsi.promoDateToShow : formatLocalDate(policyData.payment_limit),
                         banco: bancoFinal,
                         terminacion: terminacionFinal,
                         policy_number: policyData.policy_number,
+                        msi_source: effectiveMsi.source || "none",
                         source: "manual_button",
                     };
 

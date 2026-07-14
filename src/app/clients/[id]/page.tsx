@@ -1,8 +1,9 @@
 import { insforge } from "@/lib/insforge";
-import { ArrowLeft, User, Phone, Mail, FileText, Plus, ShieldAlert, ShieldCheck } from "lucide-react";
+import { ArrowLeft, User, Phone, Mail, FileText, Plus, ShieldAlert, ShieldCheck, Tag } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ReminderButton } from "@/components/clients/ReminderButton";
+import { formatMsiOptions, normalizeMsiOptions } from "@/lib/msi";
 
 // Define the fetch function
 async function getClientDetails(id: string) {
@@ -225,7 +226,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
                                             </div>
                                         </div>
 
-                                        <div className="grid grid-cols-2 gap-4 py-4 border-y border-border/50 bg-muted/30 px-6 -mx-6 mb-5">
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 py-4 border-y border-border/50 bg-muted/30 px-6 -mx-6 mb-5">
                                             <div>
                                                 <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Prima Anual</p>
                                                 <p className="text-sm font-medium mt-0.5">${policy.net_premium || "0.00"} {policy.moneda || "UDI"}</p>
@@ -237,6 +238,17 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
                                                         ? policy.payment_limit.split('T')[0].split('-').reverse().join('/')
                                                         : "No definido"}
                                                 </p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Promocion MSI</p>
+                                                {policy.msi_promo_active ? (
+                                                    <p className="text-sm font-medium mt-0.5 flex items-center gap-1.5 text-primary">
+                                                        <Tag size={14} />
+                                                        Poliza: {formatMsiOptions(normalizeMsiOptions(policy.msi_options)) || "Sin meses"}
+                                                    </p>
+                                                ) : (
+                                                    <p className="text-sm font-medium mt-0.5 text-muted-foreground">Hereda general</p>
+                                                )}
                                             </div>
                                         </div>
 

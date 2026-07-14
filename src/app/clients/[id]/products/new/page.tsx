@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Save, ShieldCheck, User, Users, CreditCard, Plus, Trash2, X } from "lucide-react";
+import { ArrowLeft, Save, ShieldCheck, User, Users, CreditCard, Plus, Trash2, X, Tag } from "lucide-react";
 import Link from "next/link";
 import { insforge, ensureValidSession } from "@/lib/insforge";
 import { getTodaysExchangeRates, ExchangeRates } from "@/lib/exchangeRates";
@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
+import { MSI_OPTIONS } from "@/lib/msi";
 
 export default function NewPolicyPage({ params }: { params: Promise<{ id: string }> }) {
     const resolvedParams = use(params);
@@ -50,6 +51,10 @@ export default function NewPolicyPage({ params }: { params: Promise<{ id: string
         prima_mnx: "",
         payment_method: "",
         payment_limit: "",
+        msi_promo_active: false,
+        msi_options: [] as string[],
+        msi_start_date: "",
+        msi_end_date: "",
         tipo_de_cambio: "1",
         exchange_rate_info: "",
     });
@@ -142,6 +147,32 @@ export default function NewPolicyPage({ params }: { params: Promise<{ id: string
         setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
     };
 
+    const toggleMsiOption = (option: string) => {
+        setFormData((prev) => {
+            const currentOptions = new Set(prev.msi_options);
+            if (currentOptions.has(option)) currentOptions.delete(option);
+            else currentOptions.add(option);
+            return { ...prev, msi_options: Array.from(currentOptions) };
+        });
+    };
+
+    const validateMsiConfig = () => {
+        if (!formData.msi_promo_active) return true;
+        if (formData.msi_options.length === 0) {
+            toast.error("Selecciona al menos una opcion MSI para la poliza.");
+            return false;
+        }
+        if (!formData.msi_start_date || !formData.msi_end_date) {
+            toast.error("Captura fecha inicio y fecha fin para la promocion MSI de la poliza.");
+            return false;
+        }
+        if (formData.msi_start_date > formData.msi_end_date) {
+            toast.error("La fecha inicio MSI no puede ser posterior a la fecha fin.");
+            return false;
+        }
+        return true;
+    };
+
 
     const handleContratanteChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         setContratante((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -180,6 +211,11 @@ export default function NewPolicyPage({ params }: { params: Promise<{ id: string
         setIsSubmitting(true);
 
         try {
+            if (!validateMsiConfig()) {
+                setIsSubmitting(false);
+                return;
+            }
+
             const session = await ensureValidSession();
             if (!session) {
                 toast.error("Tu sesión ha expirado por inactividad. Copia tus datos temporales por seguridad, recarga la página e inicia sesión nuevamente.", {
@@ -213,6 +249,10 @@ export default function NewPolicyPage({ params }: { params: Promise<{ id: string
                 prima_mnx: formData.prima_mnx ? parseFloat(formData.prima_mnx) : 0,
                 payment_method: formData.payment_method,
                 payment_limit: formData.payment_limit || null,
+                msi_promo_active: formData.msi_promo_active,
+                msi_options: formData.msi_options,
+                msi_start_date: formData.msi_promo_active ? formData.msi_start_date || null : null,
+                msi_end_date: formData.msi_promo_active ? formData.msi_end_date || null : null,
                 contratante: contratante,
                 beneficiarios: beneficiarios,
                 tarjetas: tarjetas
@@ -241,6 +281,7 @@ export default function NewPolicyPage({ params }: { params: Promise<{ id: string
         { id: "contratante", label: "Contratante", icon: User },
         { id: "beneficiarios", label: "Beneficiarios", icon: Users },
         { id: "tarjetas", label: "Tarjetas Vigentes", icon: CreditCard },
+        { id: "msi", label: "Promocion MSI", icon: Tag },
     ];
 
     return (
@@ -325,9 +366,52 @@ export default function NewPolicyPage({ params }: { params: Promise<{ id: string
                                         </div>
                                     </div>
                                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mt-4">
-                                        <Input label="Meses sin intereses" name="meses_sin_intereses" value={formData.meses_sin_intereses} onChange={handleChange} placeholder="Ej. BANAMEX 12 MONTHS" />
+                                        <Input label="Meses sin intereses (nota legacy)" name="meses_sin_intereses" value={formData.meses_sin_intereses} onChange={handleChange} placeholder="Ej. BANAMEX 12 MONTHS" />
                                         <Input label="Conducto de Cobro" name="payment_method" value={formData.payment_method} onChange={handleChange} placeholder="Ej. Tarjeta" />
                                         <Input label="Pagado Hasta" type="date" name="payment_limit" value={formData.payment_limit} onChange={handleChange} />
+                                    </div>
+                                </div>
+                                <div className="hidden">
+                                    <div className="flex items-center justify-between rounded-lg border border-border bg-muted/20 p-4">
+                                        <div className="flex items-start gap-3">
+                                            <Tag size={18} className="mt-0.5 text-primary" />
+                                            <div>
+                                                <h3 className="text-lg font-semibold text-primary">Promocion MSI</h3>
+                                                <p className="text-xs text-muted-foreground">Si esta activa, esta poliza usa sus propios meses y fechas. Si esta apagada, hereda la configuracion general cuando exista.</p>
+                                            </div>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setFormData((prev) => ({ ...prev, msi_promo_active: !prev.msi_promo_active }))}
+                                            className={`h-6 w-11 rounded-full relative cursor-pointer transition-colors ${formData.msi_promo_active ? "bg-primary" : "bg-muted"}`}
+                                            aria-pressed={formData.msi_promo_active}
+                                        >
+                                            <span className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-all ${formData.msi_promo_active ? "right-1" : "left-1"}`} />
+                                        </button>
+                                    </div>
+
+                                    <div className={formData.msi_promo_active ? "space-y-4" : "space-y-4 opacity-50"}>
+                                        <div className="space-y-2">
+                                            <p className="text-sm font-medium">Opciones MSI</p>
+                                            <div className="flex flex-wrap gap-3">
+                                                {MSI_OPTIONS.map((option) => (
+                                                    <label key={option} className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={formData.msi_options.includes(option)}
+                                                            onChange={() => toggleMsiOption(option)}
+                                                            disabled={!formData.msi_promo_active}
+                                                            className="h-4 w-4"
+                                                        />
+                                                        {option} meses
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div className="grid gap-4 sm:grid-cols-2">
+                                            <Input label="Inicio promocion MSI" type="date" name="msi_start_date" value={formData.msi_start_date} onChange={handleChange} disabled={!formData.msi_promo_active} />
+                                            <Input label="Fin promocion MSI" type="date" name="msi_end_date" value={formData.msi_end_date} onChange={handleChange} disabled={!formData.msi_promo_active} />
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="space-y-4">
@@ -339,6 +423,53 @@ export default function NewPolicyPage({ params }: { params: Promise<{ id: string
                                         <Input label="Placas" name="vehicle_plates" value={formData.vehicle_plates} onChange={handleChange} />
                                         <Input label="No. de Serie / VIN" name="vehicle_serial" value={formData.vehicle_serial} onChange={handleChange} />
                                         <Input label="Motor" name="vehicle_motor" value={formData.vehicle_motor} onChange={handleChange} />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+
+                        {activeTab === "msi" && (
+                            <div className="space-y-6 animate-in fade-in">
+                                <div className="flex items-center justify-between rounded-lg border border-border bg-muted/20 p-4">
+                                    <div className="flex items-start gap-3">
+                                        <Tag size={18} className="mt-0.5 text-primary" />
+                                        <div>
+                                            <h3 className="text-lg font-semibold text-primary">Promocion MSI</h3>
+                                            <p className="text-xs text-muted-foreground">Si esta activa, esta poliza usa sus propios meses y fechas. Si esta apagada, hereda la configuracion general cuando exista.</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData((prev) => ({ ...prev, msi_promo_active: !prev.msi_promo_active }))}
+                                        className={`h-6 w-11 rounded-full relative cursor-pointer transition-colors ${formData.msi_promo_active ? "bg-primary" : "bg-muted"}`}
+                                        aria-pressed={formData.msi_promo_active}
+                                    >
+                                        <span className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-all ${formData.msi_promo_active ? "right-1" : "left-1"}`} />
+                                    </button>
+                                </div>
+
+                                <div className={formData.msi_promo_active ? "space-y-4" : "space-y-4 opacity-50"}>
+                                    <div className="space-y-2">
+                                        <p className="text-sm font-medium">Opciones MSI</p>
+                                        <div className="flex flex-wrap gap-3">
+                                            {MSI_OPTIONS.map((option) => (
+                                                <label key={option} className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={formData.msi_options.includes(option)}
+                                                        onChange={() => toggleMsiOption(option)}
+                                                        disabled={!formData.msi_promo_active}
+                                                        className="h-4 w-4"
+                                                    />
+                                                    {option} meses
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="grid gap-4 sm:grid-cols-2">
+                                        <Input label="Inicio promocion MSI" type="date" name="msi_start_date" value={formData.msi_start_date} onChange={handleChange} disabled={!formData.msi_promo_active} />
+                                        <Input label="Fin promocion MSI" type="date" name="msi_end_date" value={formData.msi_end_date} onChange={handleChange} disabled={!formData.msi_promo_active} />
                                     </div>
                                 </div>
                             </div>
