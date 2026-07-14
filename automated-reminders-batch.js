@@ -269,7 +269,12 @@ export default async function (req) {
         log.push(`Se encontraron ${policies.length} pólizas que vencen en estas fechas`);
 
         // 5. Enviar correos
-        const resend = new Resend('re_hzWZVnEV_44fh2fey5yGVug74FFfJppvN');
+        const resendApiKey = getEnv("RESEND_API_KEY");
+        if (!resendApiKey) {
+            throw new Error("Falta configurar RESEND_API_KEY en el entorno de la funcion.");
+        }
+
+        const resend = new Resend(resendApiKey);
         const results = [];
 
         for (const policy of policies) {

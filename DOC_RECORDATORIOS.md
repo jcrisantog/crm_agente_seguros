@@ -45,7 +45,8 @@ Si el sistema vuelve a reportar "0 envíos" habiendo pólizas próximas:
 1. **Verificar Umbrales:** Asegúrate de que los días configurados en **Ajustes > Recordatorios Email** coincidan con los días que faltan para el vencimiento de tus pólizas.
 2. **Revisar Estatus:** La póliza en la base de datos debe estar marcada como **"Activa"** o **"Pendiente"**.
 3. **Validar Emails en Resend:** Si el cliente tiene un email distinto a `jcrisantog@gmail.com`, el envío fallará hasta que verifiques un dominio en [Resend.com](https://resend.com/domains).
-4. **Logs de Error:** Revisa la tabla `reminder_logs` en el panel de Insforge para ver el campo `error_details` si el estado es `error`.
+4. **Validar credencial de Resend:** Las funciones de InsForge deben tener un secret activo `RESEND_API_KEY`; el despliegue de Next.js en Dokploy debe tener la misma variable como entorno server-side. No usar `NEXT_PUBLIC_RESEND_API_KEY`.
+5. **Logs de Error:** Revisa la tabla `reminder_logs` en el panel de Insforge para ver el campo `error_details` si el estado es `error`.
 
 ---
 

@@ -5,13 +5,11 @@ import { NextResponse } from "next/server";
 // Using the same credentials as in other endpoints or scripts (automated_reminders_v2.js)
 const insforgeUrl = process.env.NEXT_PUBLIC_INSFORGE_URL || "https://fbmf8gg8.us-west.insforge.app";
 const insforgeAnonKey = process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY || "ik_5863262628f9d1dc6db41c29ffd7c8ef";
-const resendApiKey = process.env.RESEND_API_KEY || 're_3aUNW81V_Gt64hQw11qn46gAGjbz4AY4m';
 
 const client = createClient({
     baseUrl: insforgeUrl,
     anonKey: insforgeAnonKey
 });
-const resend = new Resend(resendApiKey);
 
 type PaymentCard = {
     is_main?: boolean;
@@ -27,6 +25,16 @@ function formatMxnAmount(amount: unknown) {
 
 export async function POST() {
     try {
+        const resendApiKey = process.env.RESEND_API_KEY;
+        if (!resendApiKey) {
+            return NextResponse.json(
+                { error: "Falta configurar RESEND_API_KEY en el entorno del servidor." },
+                { status: 500 }
+            );
+        }
+
+        const resend = new Resend(resendApiKey);
+
         // 1. Obtener la configuracion de MSI
         const { data: settings, error: settingsError } = await client.database
             .from("reminder_settings")

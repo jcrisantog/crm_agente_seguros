@@ -1,6 +1,8 @@
 import { createClient } from "npm:@insforge/sdk";
 import { Resend } from "npm:resend";
 
+const getEnv = (name) => globalThis.Deno?.env?.get(name) || "";
+
 export default async function (req) {
     const corsHeaders = {
         "Access-Control-Allow-Origin": "*",
@@ -140,8 +142,12 @@ export default async function (req) {
         }
 
         // 4. Enviar con Resend
-        // API KEY enviada por el usuario
-        const resend = new Resend('re_hzWZVnEV_44fh2fey5yGVug74FFfJppvN');
+        const resendApiKey = getEnv("RESEND_API_KEY");
+        if (!resendApiKey) {
+            throw new Error("Falta configurar RESEND_API_KEY en el entorno de la funcion.");
+        }
+
+        const resend = new Resend(resendApiKey);
         const { data, error } = await resend.emails.send({
             from: 'Diego MN Seguros <onboarding@resend.dev>',
             to: userData.email || 'jcrisantog@gmail.com', // Fallback al correo del usuario si el cliente no tiene

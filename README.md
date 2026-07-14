@@ -57,6 +57,9 @@ CRM/
 | :--- | :--- | :--- | :--- |
 | `NEXT_PUBLIC_INSFORGE_URL` | URL base de la API de Insforge | `https://xyz.insforge.com` | Sí |
 | `NEXT_PUBLIC_INSFORGE_ANON_KEY` | Llave pública de acceso (Anon Key) | `eyJhbGciOiJIUzI1...` | Sí |
+| `RESEND_API_KEY` | Llave server-side para envío de correos con Resend | `re_...` | Sí para envíos de correo |
+
+`RESEND_API_KEY` nunca debe llevar prefijo `NEXT_PUBLIC_` ni quedar escrita en código fuente. En funciones de InsForge debe configurarse como secret del proyecto; en Dokploy debe configurarse como variable de entorno server-side del servicio.
 
 ---
 
