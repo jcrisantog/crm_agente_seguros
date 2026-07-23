@@ -21,6 +21,7 @@ export default function EditPolicyPage({ params }: { params: Promise<{ id: strin
     const [clientName, setClientName] = useState("Cargando...");
     const [products, setProducts] = useState<any[]>([]);
     const [exchangeRates, setExchangeRates] = useState<ExchangeRates | null>(null);
+    const [showVehicleData, setShowVehicleData] = useState(true);
 
     // UI State
     const [activeTab, setActiveTab] = useState("poliza");
@@ -89,10 +90,11 @@ export default function EditPolicyPage({ params }: { params: Promise<{ id: strin
             setIsLoading(true);
             setError(null);
             try {
-                const [clientRes, productsRes, policyRes] = await Promise.all([
+                const [clientRes, productsRes, policyRes, systemSettingsRes] = await Promise.all([
                     insforge.database.from("clients").select("full_name").eq("id", resolvedParams.id).single(),
                     insforge.database.from("products").select("id, name").order("name"),
-                    insforge.database.from("client_products").select("*").eq("id", resolvedParams.policyId).single()
+                    insforge.database.from("client_products").select("*").eq("id", resolvedParams.policyId).single(),
+                    insforge.database.from("system_settings").select("show_vehicle_data").limit(1).maybeSingle()
                 ]);
 
                 if (clientRes.error) console.warn("Error fetching client:", clientRes.error);
@@ -104,6 +106,7 @@ export default function EditPolicyPage({ params }: { params: Promise<{ id: strin
 
                 if (clientRes.data) setClientName(clientRes.data.full_name);
                 if (productsRes.data) setProducts(productsRes.data);
+                if (systemSettingsRes.data) setShowVehicleData(systemSettingsRes.data.show_vehicle_data !== false);
 
                 if (policyRes.data) {
                     const data = policyRes.data;
@@ -344,12 +347,14 @@ export default function EditPolicyPage({ params }: { params: Promise<{ id: strin
                 issued_date: formData.issued_date || null,
                 status: formData.status,
                 coverage_type: formData.coverage_type,
-                vehicle_type: formData.vehicle_type,
-                vehicle_brand: formData.vehicle_brand,
-                vehicle_model: formData.vehicle_model,
-                vehicle_plates: formData.vehicle_plates,
-                vehicle_serial: formData.vehicle_serial,
-                vehicle_motor: formData.vehicle_motor,
+                ...(showVehicleData ? {
+                    vehicle_type: formData.vehicle_type,
+                    vehicle_brand: formData.vehicle_brand,
+                    vehicle_model: formData.vehicle_model,
+                    vehicle_plates: formData.vehicle_plates,
+                    vehicle_serial: formData.vehicle_serial,
+                    vehicle_motor: formData.vehicle_motor,
+                } : {}),
                 net_premium: formData.net_premium ? parseFloat(formData.net_premium) : null,
                 moneda: formData.moneda,
                 frecuencia_pago: formData.frecuencia_pago,
@@ -543,17 +548,19 @@ export default function EditPolicyPage({ params }: { params: Promise<{ id: strin
                                     </div>
                                 </div>
                             </div>
-                            <div className="space-y-4">
-                                <h3 className="text-lg font-semibold text-primary">Datos del Vehículo (Si Aplica)</h3>
-                                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                                    <Input label="Tipo de Vehículo" name="vehicle_type" value={formData.vehicle_type} onChange={handleChange} />
-                                    <Input label="Marca" name="vehicle_brand" value={formData.vehicle_brand} onChange={handleChange} />
-                                    <Input label="Modelo" name="vehicle_model" value={formData.vehicle_model} onChange={handleChange} />
-                                    <Input label="Placas" name="vehicle_plates" value={formData.vehicle_plates} onChange={handleChange} />
-                                    <Input label="No. de Serie / VIN" name="vehicle_serial" value={formData.vehicle_serial} onChange={handleChange} />
-                                    <Input label="Motor" name="vehicle_motor" value={formData.vehicle_motor} onChange={handleChange} />
+                            {showVehicleData && (
+                                <div className="space-y-4">
+                                    <h3 className="text-lg font-semibold text-primary">Datos del Vehículo (Si Aplica)</h3>
+                                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                        <Input label="Tipo de Vehículo" name="vehicle_type" value={formData.vehicle_type} onChange={handleChange} />
+                                        <Input label="Marca" name="vehicle_brand" value={formData.vehicle_brand} onChange={handleChange} />
+                                        <Input label="Modelo" name="vehicle_model" value={formData.vehicle_model} onChange={handleChange} />
+                                        <Input label="Placas" name="vehicle_plates" value={formData.vehicle_plates} onChange={handleChange} />
+                                        <Input label="No. de Serie / VIN" name="vehicle_serial" value={formData.vehicle_serial} onChange={handleChange} />
+                                        <Input label="Motor" name="vehicle_motor" value={formData.vehicle_motor} onChange={handleChange} />
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
                     )}
                     {activeTab === "msi" && (

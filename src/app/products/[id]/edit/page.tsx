@@ -16,6 +16,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     const [formData, setFormData] = useState({
         name: "",
         description: "",
+        has_deductible: false,
     });
 
     const [requiredDocs, setRequiredDocs] = useState<string[]>([]);
@@ -40,6 +41,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                     setFormData({
                         name: data.name || "",
                         description: data.description || "",
+                        has_deductible: data.has_deductible === true,
                     });
                     setRequiredDocs(Array.isArray(data.required_docs_schema) ? data.required_docs_schema : []);
                 } else if (!error) {
@@ -80,6 +82,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                 .update({
                     name: formData.name,
                     description: formData.description,
+                    has_deductible: formData.has_deductible,
                     required_docs_schema: requiredDocs,
                 })
                 .eq("id", resolvedParams.id);
@@ -135,6 +138,19 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                                 <label className="text-sm font-medium leading-none">Descripción Corta</label>
                                 <textarea name="description" rows={3} value={formData.description} onChange={handleChange} className="flex w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus-[ring] resize-y" />
                             </div>
+
+                            <label className="flex items-start gap-3 rounded-lg border border-border bg-muted/20 p-4 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={formData.has_deductible}
+                                    onChange={(e) => setFormData((prev) => ({ ...prev, has_deductible: e.target.checked }))}
+                                    className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                                />
+                                <span>
+                                    <span className="block text-sm font-medium">¿Maneja deducible?</span>
+                                    <span className="block text-xs text-muted-foreground mt-1">Solo identifica esta característica del tipo de seguro; no solicita un monto.</span>
+                                </span>
+                            </label>
                         </div>
                     </div>
 

@@ -12,6 +12,7 @@ interface Product {
     id: string;
     name: string;
     description: string;
+    has_deductible: boolean;
     required_docs_schema: string[];
 }
 
@@ -121,6 +122,12 @@ export function ProductsList({ initialProducts }: { initialProducts: Product[] }
                             <p className="text-xs sm:text-sm text-muted-foreground mt-1 mb-4 h-8 sm:h-12 line-clamp-2">
                                 {product.description || "Sin descripción detallada."}
                             </p>
+
+                            <div className="mb-4">
+                                <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${product.has_deductible ? "bg-amber-500/10 text-amber-700 dark:text-amber-400" : "bg-muted text-muted-foreground"}`}>
+                                    {product.has_deductible ? "Maneja deducible" : "Sin deducible"}
+                                </span>
+                            </div>
 
                             <div className="border-t border-border pt-4 mt-auto">
                                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">

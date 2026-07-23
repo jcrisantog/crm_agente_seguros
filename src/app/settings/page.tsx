@@ -27,7 +27,8 @@ import {
     Loader2,
     CheckCircle,
     Tag,
-    Receipt
+    Receipt,
+    Car
 } from "lucide-react";
 
 // Opciones del Régimen Fiscal de acuerdo al catálogo del SAT
@@ -207,6 +208,10 @@ export default function SettingsPage() {
         regimen_fiscal: ""
     });
 
+    const [systemSettings, setSystemSettings] = useState<any>({
+        show_vehicle_data: true,
+    });
+
     // Estado para los logs
     const [logs, setLogs] = useState<any[]>([]);
     const [msiLogs, setMsiLogs] = useState<any[]>([]);
@@ -331,6 +336,16 @@ export default function SettingsPage() {
             if (billingData) {
                 setBillingSettings(billingData);
             }
+
+            const { data: systemData } = await insforge.database
+                .from("system_settings")
+                .select("id, show_vehicle_data")
+                .limit(1)
+                .maybeSingle();
+
+            if (systemData) {
+                setSystemSettings(systemData);
+            }
         };
         fetchSettings();
     }, []);
@@ -395,6 +410,27 @@ export default function SettingsPage() {
                     console.error("DB Error:", response.error);
                     throw new Error(response.error.message || "Error en la base de datos");
                 }
+            } else if (activeTab === "policies") {
+                const { id, ...rest } = systemSettings;
+                const response = id
+                    ? await insforge.database
+                        .from("system_settings")
+                        .update({ ...rest, show_vehicle_data: !!systemSettings.show_vehicle_data })
+                        .eq("id", id)
+                        .select()
+                    : await insforge.database
+                        .from("system_settings")
+                        .insert([{ show_vehicle_data: !!systemSettings.show_vehicle_data }])
+                        .select();
+
+                if (response.error) {
+                    console.error("DB Error:", response.error);
+                    throw new Error(response.error.message || "Error en la base de datos");
+                }
+
+                if (response.data?.[0]) {
+                    setSystemSettings(response.data[0]);
+                }
             } else {
                 // Simular guardado para otras pestañas (legacy logic)
                 await new Promise(resolve => setTimeout(resolve, 800));
@@ -417,6 +453,7 @@ export default function SettingsPage() {
         { id: "history", label: "Historial de Envíos", icon: History },
         { id: "msi", label: "Promociones MSI", icon: Tag },
         { id: "billing", label: "Datos para facturar", icon: Receipt },
+        { id: "policies", label: "Pólizas", icon: Car },
         /* { id: "msi_history", label: "Mensajes Enviados", icon: Send }, */
         /* { id: "security", label: "Seguridad y Accesos", icon: Lock }, */
         /* { id: "database", label: "Datos y Exportación", icon: Database }, */
@@ -945,6 +982,33 @@ export default function SettingsPage() {
                                             maxLength={5}
                                         />
                                     </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === "policies" && (
+                            <div className="space-y-6 animate-in fade-in duration-300">
+                                <div className="flex items-center justify-between border-b border-border pb-2">
+                                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                                        <Car className="text-primary" size={20} />
+                                        Configuración de Pólizas
+                                    </h3>
+                                </div>
+
+                                <div className="flex items-start justify-between gap-4 rounded-lg border border-border bg-muted/20 p-4">
+                                    <div>
+                                        <p className="font-medium">Habilitar datos de vehículo en pólizas</p>
+                                        <p className="mt-1 text-xs text-muted-foreground">Muestra tipo, marca, modelo, placas, VIN y motor al crear o editar una póliza. Ocultarlos no elimina datos existentes.</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setSystemSettings((prev: any) => ({ ...prev, show_vehicle_data: !prev.show_vehicle_data }))}
+                                        className={`mt-0.5 h-6 w-11 shrink-0 rounded-full relative cursor-pointer transition-colors ${systemSettings.show_vehicle_data ? "bg-primary" : "bg-muted"}`}
+                                        aria-pressed={systemSettings.show_vehicle_data}
+                                        aria-label="Habilitar datos de vehículo en pólizas"
+                                    >
+                                        <span className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-all ${systemSettings.show_vehicle_data ? "right-1" : "left-1"}`} />
+                                    </button>
                                 </div>
                             </div>
                         )}

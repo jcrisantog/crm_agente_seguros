@@ -24,4 +24,4 @@
 - [X]  4.1 Validar alta, edicion y perfil con los tres campos completos y con campos opcionales vacios.
 - [X]  4.2 Validar sugerencias de Fuente para coincidencias parciales, sin distincion de mayusculas ni acentos, duplicados equivalentes y valores nuevos.
 - [X]  4.3 Validar email y WhatsApp manuales y automaticos con asegurados con Alias, sin Alias y con Alias compuesto solo por espacios.
-- [ ]  4.4 Ejecutar `npm run lint` y `npm run build` despues de los cambios de aplicacion, y registrar cualquier verificacion de funciones o migracion que dependa de InsForge.
+- [X]  4.4 Ejecutar `npm run lint` y `npm run build` despues de los cambios de aplicacion, y registrar cualquier verificacion de funciones o migracion que dependa de InsForge.
