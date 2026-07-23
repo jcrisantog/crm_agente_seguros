@@ -8,6 +8,7 @@ import { insforge } from "@/lib/insforge";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { SourceCombobox } from "@/components/clients/SourceCombobox";
 
 interface Agent {
     id: string;
@@ -25,6 +26,9 @@ export default function NewClientPage() {
         phone: "",
         additional_info: "",
         agent_id: "",
+        alias: "",
+        situacion_laboral: "",
+        fuente: "",
     });
 
     useEffect(() => {
@@ -53,6 +57,9 @@ export default function NewClientPage() {
                 phone: formData.phone,
                 additional_info: formData.additional_info,
                 agent_id: formData.agent_id || null,
+                alias: formData.alias.trim() || null,
+                situacion_laboral: formData.situacion_laboral || null,
+                fuente: formData.fuente.trim() || null,
             }).select();
 
             if (error) throw error;
@@ -110,6 +117,29 @@ export default function NewClientPage() {
                             </div>
 
                             <Input
+                                label="Alias"
+                                name="alias"
+                                value={formData.alias}
+                                onChange={handleChange}
+                                placeholder="Ej. Lupita"
+                            />
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium leading-none">Situación laboral</label>
+                                <select
+                                    name="situacion_laboral"
+                                    value={formData.situacion_laboral}
+                                    onChange={handleChange}
+                                    className="flex h-10 w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                                >
+                                    <option value="">Seleccionar</option>
+                                    <option value="Empleado">Empleado</option>
+                                    <option value="Independiente">Independiente</option>
+                                    <option value="Otro">Otro</option>
+                                </select>
+                            </div>
+
+                            <Input
                                 label="Correo Electrónico"
                                 name="email"
                                 type="email"
@@ -117,6 +147,13 @@ export default function NewClientPage() {
                                 onChange={handleChange}
                                 placeholder="correo@ejemplo.com"
                             />
+
+                            <div className="sm:col-span-2">
+                                <SourceCombobox
+                                    value={formData.fuente}
+                                    onChange={(fuente) => setFormData((prev) => ({ ...prev, fuente }))}
+                                />
+                            </div>
 
                             <Input
                                 label="Teléfono"

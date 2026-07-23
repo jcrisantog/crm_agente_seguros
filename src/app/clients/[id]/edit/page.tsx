@@ -6,6 +6,7 @@ import { ArrowLeft, Save } from "lucide-react";
 import Link from "next/link";
 import { insforge, ensureValidSession } from "@/lib/insforge";
 import { toast } from "sonner";
+import { SourceCombobox } from "@/components/clients/SourceCombobox";
 
 interface Agent {
     id: string;
@@ -32,6 +33,9 @@ export default function EditClientPage({ params }: { params: Promise<{ id: strin
         telefono_oficina: "",
         edad_emision: "",
         agent_id: "",
+        alias: "",
+        situacion_laboral: "",
+        fuente: "",
     });
 
     const [agents, setAgents] = useState<Agent[]>([]);
@@ -66,6 +70,9 @@ export default function EditClientPage({ params }: { params: Promise<{ id: strin
                     telefono_oficina: data.telefono_oficina || "",
                     edad_emision: data.edad_emision?.toString() || "",
                     agent_id: data.agent_id || "",
+                    alias: data.alias || "",
+                    situacion_laboral: data.situacion_laboral || "",
+                    fuente: data.fuente || "",
                 });
             } else {
                 console.error("Error loading client:", error);
@@ -106,6 +113,9 @@ export default function EditClientPage({ params }: { params: Promise<{ id: strin
                     telefono_oficina: formData.telefono_oficina,
                     edad_emision: formData.edad_emision ? parseInt(formData.edad_emision) : null,
                     agent_id: formData.agent_id || null,
+                    alias: formData.alias.trim() || null,
+                    situacion_laboral: formData.situacion_laboral || null,
+                    fuente: formData.fuente.trim() || null,
                 })
                 .eq("id", resolvedParams.id);
 
@@ -161,8 +171,23 @@ export default function EditClientPage({ params }: { params: Promise<{ id: strin
                             </div>
 
                             <div className="space-y-2">
+                                <label className="text-sm font-medium leading-none">Alias</label>
+                                <input name="alias" value={formData.alias} onChange={handleChange} placeholder="Ej. Lupita" className="flex h-10 w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus-[ring]" />
+                            </div>
+
+                            <div className="space-y-2">
                                 <label className="text-sm font-medium leading-none">RFC / ID Fiscal</label>
                                 <input name="rfc" value={formData.rfc} onChange={handleChange} placeholder="XAXX010101000" className="flex h-10 w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus-[ring]" />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium leading-none">Situación laboral</label>
+                                <select name="situacion_laboral" value={formData.situacion_laboral} onChange={handleChange} className="flex h-10 w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus-[ring]">
+                                    <option value="">Seleccionar</option>
+                                    <option value="Empleado">Empleado</option>
+                                    <option value="Independiente">Independiente</option>
+                                    <option value="Otro">Otro</option>
+                                </select>
                             </div>
 
                             <div className="space-y-2">
@@ -226,6 +251,13 @@ export default function EditClientPage({ params }: { params: Promise<{ id: strin
                             <div className="space-y-2 sm:col-span-2">
                                 <label className="text-sm font-medium leading-none">Dirección Completa</label>
                                 <input name="direccion" value={formData.direccion} onChange={handleChange} className="flex h-10 w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus-[ring]" />
+                            </div>
+
+                            <div className="space-y-2 sm:col-span-2 lg:col-span-3">
+                                <SourceCombobox
+                                    value={formData.fuente}
+                                    onChange={(fuente) => setFormData((prev) => ({ ...prev, fuente }))}
+                                />
                             </div>
                         </div>
                     </div>

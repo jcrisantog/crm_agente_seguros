@@ -159,7 +159,7 @@ export default async function (req) {
         // 1. Obtener datos
         const { data: userData } = await client.database
             .from("clients")
-            .select("full_name, email")
+            .select("full_name, alias, email")
             .eq("id", client_id)
             .single();
 
@@ -178,6 +178,8 @@ export default async function (req) {
         if (!userData || !policyData || !settings) {
             throw new Error("Datos insuficientes para enviar el correo (Cliente, Póliza o Ajustes faltantes)");
         }
+
+        const clientName = userData.alias?.trim() || userData.full_name;
 
         // 2. Cálculos
         const normalizedPaymentLimit = normalizeDateValue(policyData.payment_limit);
@@ -219,7 +221,7 @@ export default async function (req) {
 
         if (effectiveMsi.applies) {
             html = (settings.msi_email_template || settings.email_template)
-                .replaceAll("{{nombre}}", userData.full_name)
+                .replaceAll("{{nombre}}", clientName)
                 .replaceAll("{{poliza}}", policyData.policy_number || "Pendiente")
                 .replaceAll("{{msi_opciones}}", effectiveMsi.formattedOptions)
                 .replaceAll("{{fecha_pago}}", formatL(normalizedPaymentLimit))
@@ -232,11 +234,11 @@ export default async function (req) {
                 .replaceAll("{{terminacion}}", tF);
 
             subject = (settings.msi_email_subject || settings.email_subject)
-                .replaceAll("{{nombre}}", userData.full_name)
+                .replaceAll("{{nombre}}", clientName)
                 .replaceAll("{{poliza}}", policyData.policy_number || "");
         } else {
             html = settings.email_template
-                .replaceAll("{{nombre}}", userData.full_name)
+                .replaceAll("{{nombre}}", clientName)
                 .replaceAll("{{fecha_pago}}", formatL(normalizedPaymentLimit))
                 .replaceAll("{{dias_restantes}}", diffDays.toString())
                 .replaceAll("{{monto}}", primaMnxFormatted)
@@ -245,7 +247,7 @@ export default async function (req) {
                 .replaceAll("{{terminacion}}", tF);
 
             subject = settings.email_subject
-                .replaceAll("{{nombre}}", userData.full_name);
+                .replaceAll("{{nombre}}", clientName);
         }
 
         // 4. Enviar con Resend
@@ -256,7 +258,7 @@ export default async function (req) {
 
         const resend = new Resend(resendApiKey);
         const { data, error } = await resend.emails.send({
-            from: 'Diego MN Seguros <onboarding@resend.dev>',
+            from: 'Diego MN Seguros <no-reply@carteraprime.minegocio-digital.com>',
             to: userData.email || 'jcrisantog@gmail.com', // Fallback al correo del usuario si el cliente no tiene
             subject: subject,
             html: html,

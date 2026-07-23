@@ -254,7 +254,7 @@ export default async function (req) {
 
         const { data: policies, error: policiesError } = await client.database
             .from("client_products")
-            .select("*, client:clients(full_name, email, phone)")
+            .select("*, client:clients(full_name, alias, email, phone)")
             .in("payment_limit", targetDates)
             .or('status.eq.Activa,status.eq.ACTIVA');
 
@@ -282,6 +282,8 @@ export default async function (req) {
                 results.push({ policy_id: policy.id, success: false, error: "Cliente sin email" });
                 continue;
             }
+
+            const clientName = policy.client.alias?.trim() || policy.client.full_name;
 
             // Calcular dias restantes
             const normalizedPaymentLimit = normalizeDateValue(policy.payment_limit);
@@ -367,7 +369,7 @@ export default async function (req) {
 
             if (effectiveMsi.applies) {
                 html = (settings.msi_email_template || settings.email_template)
-                    .replaceAll("{{nombre}}", policy.client.full_name)
+                    .replaceAll("{{nombre}}", clientName)
                     .replaceAll("{{poliza}}", policy.policy_number || "Pendiente")
                     .replaceAll("{{msi_opciones}}", effectiveMsi.formattedOptions)
                     .replaceAll("{{fecha_pago}}", formatL(normalizedPaymentLimit))
@@ -380,7 +382,7 @@ export default async function (req) {
                     .replaceAll("{{terminacion}}", tF);
 
                 subject = (settings.msi_email_subject || settings.email_subject)
-                    .replaceAll("{{nombre}}", policy.client.full_name)
+                    .replaceAll("{{nombre}}", clientName)
                     .replaceAll("{{poliza}}", policy.policy_number || "");
 
                 promocionWebhook = "si";
@@ -388,7 +390,7 @@ export default async function (req) {
                 fechaMaxPagoWebhook = effectiveMsi.promoDateToShow;
             } else {
                 html = settings.email_template
-                    .replaceAll("{{nombre}}", policy.client.full_name)
+                    .replaceAll("{{nombre}}", clientName)
                     .replaceAll("{{fecha_pago}}", formatL(normalizedPaymentLimit))
                     .replaceAll("{{dias_restantes}}", diffDays.toString())
                     .replaceAll("{{monto}}", primaMnxFormatted)
@@ -397,11 +399,11 @@ export default async function (req) {
                     .replaceAll("{{terminacion}}", tF);
 
                 subject = settings.email_subject
-                    .replaceAll("{{nombre}}", policy.client.full_name);
+                    .replaceAll("{{nombre}}", clientName);
             }
 
             const { error: emailError } = await resend.emails.send({
-                from: 'Diego MN Seguros <onboarding@resend.dev>',
+                from: 'Diego MN Seguros <no-reply@carteraprime.minegocio-digital.com>',
                 to: policy.client.email,
                 subject: subject,
                 html: html,
@@ -420,7 +422,7 @@ export default async function (req) {
                         },
                         body: JSON.stringify({
                             promocion: promocionWebhook,
-                            nombre: policy.client.full_name,
+                            nombre: clientName,
                             telefono: policy.client?.phone || "",
                             fecha_corte: formatL(normalizedPaymentLimit),
                             monto: primaMnxFormatted,
@@ -446,7 +448,7 @@ export default async function (req) {
 
             results.push({
                 policy_id: policy.id,
-                client: policy.client.full_name,
+                client: clientName,
                 success: !emailError,
                 error: emailError?.message,
                 msi_source: effectiveMsi.source || "none",

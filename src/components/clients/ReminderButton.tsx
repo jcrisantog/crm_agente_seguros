@@ -134,7 +134,7 @@ export function ReminderButton({ policyNumber, clientName, policyId, clientId }:
                         .maybeSingle(),
                     insforge.database
                         .from("clients")
-                        .select("full_name, phone")
+                        .select("full_name, alias, phone")
                         .eq("id", clientId)
                         .single(),
                 ]);
@@ -181,7 +181,7 @@ export function ReminderButton({ policyNumber, clientName, policyId, clientId }:
 
                     const payload = {
                         promocion: effectiveMsi.applies ? "si" : "no",
-                        nombre: clientData?.full_name || clientName,
+                        nombre: clientData?.alias?.trim() || clientData?.full_name || clientName,
                         telefono: clientData?.phone || "",
                         fecha_corte: formatLocalDate(policyData.payment_limit),
                         monto: primaMnxFormatted,

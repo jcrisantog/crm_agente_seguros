@@ -68,7 +68,7 @@ export async function POST() {
         // 2. Buscar todas las pólizas cuyo payment_limit esté entre hoy+10 y la fecha maxima+10
         const { data: policies, error: policiesError } = await client.database
             .from("client_products")
-            .select("*, client:clients(full_name, email)")
+            .select("*, client:clients(full_name, alias, email)")
             .gte("payment_limit", todayPlus10Str)
             .lte("payment_limit", maxDatePlux10Str);
 
@@ -86,7 +86,7 @@ export async function POST() {
         for (const policy of policies) {
             const statusUpper = (policy.status || "").trim().toUpperCase();
             const clientEmail = (policy.client?.email || "").trim();
-            const clientName = policy.client?.full_name || "Desconocido";
+            const clientName = policy.client?.alias?.trim() || policy.client?.full_name || "Desconocido";
 
             if (!clientEmail) {
                 errors.push({ p: policy.policy_number, r: "Sin email" });

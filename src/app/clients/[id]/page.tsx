@@ -94,6 +94,19 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
                     <div className="grid grid-cols-1 gap-6">
                         {/* RFC and Email */}
                         <div className="grid grid-cols-1 gap-4">
+                            {client.alias && (
+                                <div className="grid grid-cols-1 gap-4 pb-2 border-b border-border/40">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 rounded-lg bg-muted/40">
+                                            <User className="h-4 w-4 text-muted-foreground" />
+                                        </div>
+                                        <div className="space-y-0.5">
+                                            <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Alias</p>
+                                            <p className="text-sm font-semibold tracking-tight">{client.alias}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                             <div className="flex items-center gap-3">
                                 <div className="p-2 rounded-lg bg-muted/40">
                                     <FileText className="h-4 w-4 text-muted-foreground" />
@@ -179,6 +192,33 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
                                 </div>
                             </div>
                         </div>
+
+                        {(client.situacion_laboral || client.fuente) && (
+                            <div className="grid grid-cols-1 gap-4 pt-4 border-t border-border/60">
+                                {client.situacion_laboral && (
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 rounded-lg bg-muted/40">
+                                            <FileText className="h-4 w-4 text-muted-foreground" />
+                                        </div>
+                                        <div className="space-y-0.5">
+                                            <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Situación laboral</p>
+                                            <p className="text-sm font-semibold tracking-tight">{client.situacion_laboral}</p>
+                                        </div>
+                                    </div>
+                                )}
+                                {client.fuente && (
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 rounded-lg bg-muted/40">
+                                            <FileText className="h-4 w-4 text-muted-foreground" />
+                                        </div>
+                                        <div className="space-y-0.5">
+                                            <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Fuente</p>
+                                            <p className="text-sm font-semibold tracking-tight">{client.fuente}</p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
 
