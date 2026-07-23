@@ -23,4 +23,4 @@
 - [x] 4.1 Ejecutar una busqueda de patrones para confirmar que no quedan llaves reales de Resend en archivos versionables.
 - [x] 4.2 Ejecutar `npm run lint` si se toca codigo TypeScript o rutas Next.js.
 - [x] 4.3 Ejecutar `npm run build` si se modifica la ruta API o configuracion que pueda afectar compilacion.
-- [ ] 4.4 Probar envio de recordatorio individual, batch automatico y promociones MSI si la ruta sigue accesible.
+- [x] 4.4 Probar envio de recordatorio individual, batch automatico y promociones MSI si la ruta sigue accesible.

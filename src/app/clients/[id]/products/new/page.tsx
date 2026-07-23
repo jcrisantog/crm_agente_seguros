@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Save, ShieldCheck, User, Users, CreditCard, Plus, Trash2, X, Tag } from "lucide-react";
+import { ArrowLeft, Save, ShieldCheck, User, Users, CreditCard, Plus, Trash2, X, Tag, Pencil } from "lucide-react";
 import Link from "next/link";
 import { insforge, ensureValidSession } from "@/lib/insforge";
 import { getTodaysExchangeRates, ExchangeRates } from "@/lib/exchangeRates";
@@ -25,6 +25,7 @@ export default function NewPolicyPage({ params }: { params: Promise<{ id: string
     // UI State
     const [activeTab, setActiveTab] = useState("poliza");
     const [isBeneficiaryModalOpen, setIsBeneficiaryModalOpen] = useState(false);
+    const [editingBeneficiaryIndex, setEditingBeneficiaryIndex] = useState<number | null>(null);
     const [isCardModalOpen, setIsCardModalOpen] = useState(false);
 
     // Form States
@@ -73,7 +74,14 @@ export default function NewPolicyPage({ params }: { params: Promise<{ id: string
     const [tarjetas, setTarjetas] = useState<any[]>([]);
 
     // Modal temp states
-    const [currentBeneficiary, setCurrentBeneficiary] = useState({ nombre: "", relacion: "", tipo: "ORDINARIO", porcentaje: "" });
+    const [currentBeneficiary, setCurrentBeneficiary] = useState({
+        nombre: "",
+        relacion: "",
+        porcentaje: "",
+        fecha_nacimiento: "",
+        direccion: "",
+        misma_direccion_contratante: false,
+    });
     const [currentCard, setCurrentCard] = useState({ no_tarjeta: "", banco: "", tipo_tarjeta: "", is_main: false });
 
     useEffect(() => {
@@ -175,7 +183,40 @@ export default function NewPolicyPage({ params }: { params: Promise<{ id: string
 
 
     const handleContratanteChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        setContratante((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+        const { name, value } = e.target;
+        setContratante((prev) => ({ ...prev, [name]: value }));
+
+        if (name === "direccion") {
+            setBeneficiarios((prev) => prev.map((beneficiario) => (
+                beneficiario.misma_direccion_contratante
+                    ? { ...beneficiario, direccion: value }
+                    : beneficiario
+            )));
+        }
+    };
+
+    const resetCurrentBeneficiary = () => {
+        setCurrentBeneficiary({ nombre: "", relacion: "", porcentaje: "", fecha_nacimiento: "", direccion: "", misma_direccion_contratante: false });
+        setEditingBeneficiaryIndex(null);
+    };
+
+    const openNewBeneficiaryModal = () => {
+        resetCurrentBeneficiary();
+        setIsBeneficiaryModalOpen(true);
+    };
+
+    const editBeneficiary = (index: number) => {
+        const beneficiario = beneficiarios[index];
+        setCurrentBeneficiary({
+            nombre: beneficiario.nombre || "",
+            relacion: beneficiario.relacion || "",
+            porcentaje: beneficiario.porcentaje?.toString() || "",
+            fecha_nacimiento: beneficiario.fecha_nacimiento || "",
+            direccion: beneficiario.direccion || "",
+            misma_direccion_contratante: beneficiario.misma_direccion_contratante === true,
+        });
+        setEditingBeneficiaryIndex(index);
+        setIsBeneficiaryModalOpen(true);
     };
 
     const addBeneficiary = () => {
@@ -183,8 +224,17 @@ export default function NewPolicyPage({ params }: { params: Promise<{ id: string
             toast.error("El nombre y el porcentaje son obligatorios.");
             return;
         }
-        setBeneficiarios(prev => [...prev, currentBeneficiary]);
-        setCurrentBeneficiary({ nombre: "", relacion: "", tipo: "ORDINARIO", porcentaje: "" });
+        const beneficiario = {
+            ...currentBeneficiary,
+            direccion: currentBeneficiary.misma_direccion_contratante
+                ? contratante.direccion
+                : currentBeneficiary.direccion,
+        };
+        setBeneficiarios(prev => editingBeneficiaryIndex === null
+            ? [...prev, beneficiario]
+            : prev.map((item, index) => index === editingBeneficiaryIndex ? beneficiario : item)
+        );
+        resetCurrentBeneficiary();
         setIsBeneficiaryModalOpen(false);
     };
 
@@ -225,6 +275,12 @@ export default function NewPolicyPage({ params }: { params: Promise<{ id: string
                 return;
             }
 
+            const beneficiariosParaGuardar = beneficiarios.map((beneficiario) => {
+                const beneficiarioSinTipo = { ...beneficiario };
+                delete beneficiarioSinTipo.tipo;
+                return beneficiarioSinTipo;
+            });
+
             const { error: insforgeError } = await insforge.database.from("client_products").insert({
                 client_id: resolvedParams.id,
                 product_id: formData.product_id ? formData.product_id : null,
@@ -254,7 +310,7 @@ export default function NewPolicyPage({ params }: { params: Promise<{ id: string
                 msi_start_date: formData.msi_promo_active ? formData.msi_start_date || null : null,
                 msi_end_date: formData.msi_promo_active ? formData.msi_end_date || null : null,
                 contratante: contratante,
-                beneficiarios: beneficiarios,
+                beneficiarios: beneficiariosParaGuardar,
                 tarjetas: tarjetas
             });
 
@@ -496,7 +552,7 @@ export default function NewPolicyPage({ params }: { params: Promise<{ id: string
                             <div className="space-y-6 animate-in fade-in">
                                 <div className="flex justify-between items-center">
                                     <h3 className="text-lg font-semibold text-primary">Lista de Beneficiarios</h3>
-                                    <Button type="button" onClick={() => setIsBeneficiaryModalOpen(true)} className="flex items-center gap-2">
+                                    <Button type="button" onClick={openNewBeneficiaryModal} className="flex items-center gap-2">
                                         <Plus size={16} /> Añadir Beneficiario
                                     </Button>
                                 </div>
@@ -511,8 +567,9 @@ export default function NewPolicyPage({ params }: { params: Promise<{ id: string
                                             <thead className="text-xs uppercase bg-muted text-muted-foreground">
                                                 <tr>
                                                     <th className="px-6 py-3">Nombre</th>
+                                                    <th className="px-6 py-3">Fecha de nacimiento</th>
                                                     <th className="px-6 py-3">Relación</th>
-                                                    <th className="px-6 py-3">Tipo</th>
+                                                    <th className="px-6 py-3">Domicilio</th>
                                                     <th className="px-6 py-3">%</th>
                                                     <th className="px-6 py-3 text-right">Acción</th>
                                                 </tr>
@@ -521,11 +578,15 @@ export default function NewPolicyPage({ params }: { params: Promise<{ id: string
                                                 {beneficiarios.map((b, idx) => (
                                                     <tr key={idx} className="border-b border-border/50 bg-background hover:bg-muted/30">
                                                         <td className="px-6 py-4 font-medium">{b.nombre}</td>
+                                                        <td className="px-6 py-4">{b.fecha_nacimiento || "No registrada"}</td>
                                                         <td className="px-6 py-4">{b.relacion}</td>
-                                                        <td className="px-6 py-4">{b.tipo}</td>
+                                                        <td className="px-6 py-4">{b.direccion || "No registrado"}</td>
                                                         <td className="px-6 py-4">{b.porcentaje}%</td>
-                                                        <td className="px-6 py-4 text-right">
-                                                            <button type="button" onClick={() => removeBeneficiary(idx)} className="text-red-500 hover:text-red-700 p-2">
+                                                        <td className="px-6 py-4 text-right whitespace-nowrap">
+                                                            <button type="button" onClick={() => editBeneficiary(idx)} className="text-primary hover:text-primary/80 p-2" aria-label="Editar beneficiario" title="Editar beneficiario">
+                                                                <Pencil size={16} />
+                                                            </button>
+                                                            <button type="button" onClick={() => removeBeneficiary(idx)} className="text-red-500 hover:text-red-700 p-2" aria-label="Eliminar beneficiario" title="Eliminar beneficiario">
                                                                 <Trash2 size={16} />
                                                             </button>
                                                         </td>
@@ -614,20 +675,34 @@ export default function NewPolicyPage({ params }: { params: Promise<{ id: string
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
                     <div className="bg-background w-full max-w-lg rounded-xl shadow-2xl overflow-hidden border border-border animate-in zoom-in-95">
                         <div className="flex items-center justify-between p-4 border-b border-border">
-                            <h3 className="font-semibold text-lg">Añadir Beneficiario</h3>
-                            <button onClick={() => setIsBeneficiaryModalOpen(false)} className="text-muted-foreground hover:text-foreground p-1"><X size={20} /></button>
+                            <h3 className="font-semibold text-lg">{editingBeneficiaryIndex === null ? "Añadir Beneficiario" : "Editar Beneficiario"}</h3>
+                            <button onClick={() => { resetCurrentBeneficiary(); setIsBeneficiaryModalOpen(false); }} className="text-muted-foreground hover:text-foreground p-1"><X size={20} /></button>
                         </div>
                         <div className="p-6 space-y-4">
                             <Input label="Nombre del Beneficiario *" value={currentBeneficiary.nombre} onChange={(e) => setCurrentBeneficiary({ ...currentBeneficiary, nombre: e.target.value })} placeholder="Nombre completo" />
                             <div className="grid grid-cols-2 gap-4">
+                                <Input label="Fecha de nacimiento" type="date" value={currentBeneficiary.fecha_nacimiento} onChange={(e) => setCurrentBeneficiary({ ...currentBeneficiary, fecha_nacimiento: e.target.value })} />
                                 <Input label="Relación" value={currentBeneficiary.relacion} onChange={(e) => setCurrentBeneficiary({ ...currentBeneficiary, relacion: e.target.value })} placeholder="Ej. Esposa, Hijo" />
-                                <Select label="Tipo" value={currentBeneficiary.tipo} onChange={(e) => setCurrentBeneficiary({ ...currentBeneficiary, tipo: e.target.value })} options={[{ value: "ORDINARIO", label: "Ordinario" }, { value: "CONTINGENTE", label: "Contingente" }]} />
                             </div>
+                            <label className="flex items-center gap-2 text-sm font-medium">
+                                <input
+                                    type="checkbox"
+                                    checked={currentBeneficiary.misma_direccion_contratante}
+                                    onChange={(e) => setCurrentBeneficiary((prev) => ({
+                                        ...prev,
+                                        misma_direccion_contratante: e.target.checked,
+                                        direccion: e.target.checked ? contratante.direccion : prev.direccion,
+                                    }))}
+                                    className="h-4 w-4"
+                                />
+                                Misma dirección que el contratante
+                            </label>
+                            <Input label="Domicilio" value={currentBeneficiary.direccion} onChange={(e) => setCurrentBeneficiary({ ...currentBeneficiary, direccion: e.target.value })} disabled={currentBeneficiary.misma_direccion_contratante} />
                             <Input label="Porcentaje (%) *" type="number" step="0.1" value={currentBeneficiary.porcentaje} onChange={(e) => setCurrentBeneficiary({ ...currentBeneficiary, porcentaje: e.target.value })} placeholder="Ej. 100" />
                         </div>
                         <div className="p-4 border-t border-border bg-muted/20 flex justify-end gap-3">
-                            <Button variant="outline" type="button" onClick={() => setIsBeneficiaryModalOpen(false)}>Cancelar</Button>
-                            <Button type="button" onClick={addBeneficiary}>Guardar Beneficiario</Button>
+                            <Button variant="outline" type="button" onClick={() => { resetCurrentBeneficiary(); setIsBeneficiaryModalOpen(false); }}>Cancelar</Button>
+                            <Button type="button" onClick={addBeneficiary}>{editingBeneficiaryIndex === null ? "Guardar Beneficiario" : "Guardar Cambios"}</Button>
                         </div>
                     </div>
                 </div>
