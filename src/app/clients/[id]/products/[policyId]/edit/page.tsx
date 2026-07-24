@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { MSI_OPTIONS, normalizeMsiOptions } from "@/lib/msi";
+import { formatCurrency } from "@/lib/currency";
 
 export default function EditPolicyPage({ params }: { params: Promise<{ id: string, policyId: string }> }) {
     const resolvedParams = use(params);
@@ -38,6 +39,10 @@ export default function EditPolicyPage({ params }: { params: Promise<{ id: strin
         issued_date: "",
         status: "Activa",
         coverage_type: "",
+        annual_review_completed: "" as "" | "yes" | "no",
+        annual_review_date: "",
+        annual_review_reason: "",
+        comments: "",
         vehicle_type: "",
         vehicle_brand: "",
         vehicle_model: "",
@@ -130,6 +135,10 @@ export default function EditPolicyPage({ params }: { params: Promise<{ id: strin
                         issued_date: formatDate(data.issued_date),
                         status: data.status || "Activa",
                         coverage_type: data.coverage_type || "",
+                        annual_review_completed: data.annual_review_completed === true ? "yes" : data.annual_review_completed === false ? "no" : "",
+                        annual_review_date: formatDate(data.annual_review_date),
+                        annual_review_reason: data.annual_review_reason || "",
+                        comments: data.comments || "",
                         vehicle_type: data.vehicle_type || "",
                         vehicle_brand: data.vehicle_brand || "",
                         vehicle_model: data.vehicle_model || "",
@@ -208,8 +217,23 @@ export default function EditPolicyPage({ params }: { params: Promise<{ id: strin
         setFormData(prev => ({ ...prev, tipo_de_cambio: rate }));
     }, [formData.moneda, exchangeRates]);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    };
+
+    const validateAnnualReview = () => {
+        if (!formData.annual_review_completed) {
+            return true;
+        }
+        if (!formData.annual_review_date) {
+            toast.error("Captura la fecha asociada a la revisión anual.");
+            return false;
+        }
+        if (formData.annual_review_completed === "no" && !formData.annual_review_reason.trim()) {
+            toast.error("Captura el motivo de la revisión anual no realizada.");
+            return false;
+        }
+        return true;
     };
 
     const toggleMsiOption = (option: string) => {
@@ -323,6 +347,10 @@ export default function EditPolicyPage({ params }: { params: Promise<{ id: strin
                 setIsSubmitting(false);
                 return;
             }
+            if (!validateAnnualReview()) {
+                setIsSubmitting(false);
+                return;
+            }
 
             const session = await ensureValidSession();
             if (!session) {
@@ -347,6 +375,10 @@ export default function EditPolicyPage({ params }: { params: Promise<{ id: strin
                 issued_date: formData.issued_date || null,
                 status: formData.status,
                 coverage_type: formData.coverage_type,
+                annual_review_completed: formData.annual_review_completed === "" ? null : formData.annual_review_completed === "yes",
+                annual_review_date: formData.annual_review_date || null,
+                annual_review_reason: formData.annual_review_completed === "no" ? formData.annual_review_reason.trim() : null,
+                comments: formData.comments.trim() || null,
                 ...(showVehicleData ? {
                     vehicle_type: formData.vehicle_type,
                     vehicle_brand: formData.vehicle_brand,
@@ -492,17 +524,61 @@ export default function EditPolicyPage({ params }: { params: Promise<{ id: strin
                                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-2 mt-4">
                                     <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
                                         <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Prima por Periodo en Divisa</p>
-                                        <p className="text-2xl font-bold text-primary">${formData.prima_por_periodo || "0.00"}</p>
+                                        <p className="text-2xl font-bold text-primary">{formatCurrency(formData.prima_por_periodo)}</p>
                                     </div>
                                     <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
                                         <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Prima Por Periodo en MXN</p>
-                                        <p className="text-2xl font-bold text-green-600">${formData.prima_mnx || "0.00"}</p>
+                                        <p className="text-2xl font-bold text-green-600">{formatCurrency(formData.prima_mnx)}</p>
                                     </div>
                                 </div>
                                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mt-4">
                                     <Input label="Meses sin intereses (nota legacy)" name="meses_sin_intereses" value={formData.meses_sin_intereses} onChange={handleChange} placeholder="Ej. BANAMEX 12 MONTHS" />
                                     <Input label="Conducto de Cobro" name="payment_method" value={formData.payment_method} onChange={handleChange} placeholder="Ej. Tarjeta" />
                                     <Input label="Pagado Hasta" type="date" name="payment_limit" value={formData.payment_limit} onChange={handleChange} />
+                                </div>
+                            </div>
+                            <div className="space-y-4">
+                                <h3 className="text-lg font-semibold text-primary">Revisión Anual y Comentarios</h3>
+                                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                    <Select
+                                        label="¿Se realizó la revisión anual?"
+                                        name="annual_review_completed"
+                                        value={formData.annual_review_completed}
+                                        onChange={handleChange}
+                                        options={[
+                                            { value: "", label: "-- Seleccionar --" },
+                                            { value: "yes", label: "Sí" },
+                                            { value: "no", label: "No" },
+                                        ]}
+                                    />
+                                    <Input
+                                        label={formData.annual_review_completed === "no" ? "Fecha programada o de intento *" : formData.annual_review_completed === "yes" ? "Fecha de revisión anual *" : "Fecha de revisión anual"}
+                                        type="date"
+                                        name="annual_review_date"
+                                        value={formData.annual_review_date}
+                                        onChange={handleChange}
+                                    />
+                                    {formData.annual_review_completed === "no" && (
+                                        <Input
+                                            label="Motivo de no revisión *"
+                                            name="annual_review_reason"
+                                            value={formData.annual_review_reason}
+                                            onChange={handleChange}
+                                            placeholder="Ej. Cliente no disponible"
+                                        />
+                                    )}
+                                </div>
+                                <div className="space-y-2">
+                                    <label htmlFor="policy-comments" className="text-sm font-medium leading-none">Comentarios</label>
+                                    <textarea
+                                        id="policy-comments"
+                                        name="comments"
+                                        rows={4}
+                                        value={formData.comments}
+                                        onChange={handleChange}
+                                        placeholder="Comentarios operativos de la póliza"
+                                        className="flex w-full rounded-md border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                    />
                                 </div>
                             </div>
                             <div className="hidden">
